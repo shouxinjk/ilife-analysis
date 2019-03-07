@@ -110,7 +110,7 @@ public abstract class AbstractTopology {
         }
   //config.put(JDBC_CONF, jdbcConfigMap); 
         if("business".equalsIgnoreCase(type))
-        		this.analyzeConnectionProvider = new HikariCPConnectionProvider(jdbcConfigMap); 
+        		this.businessConnectionProvider = new HikariCPConnectionProvider(jdbcConfigMap); 
         else if("analyze".equalsIgnoreCase(type))
     			this.analyzeConnectionProvider = new HikariCPConnectionProvider(jdbcConfigMap); 
         else

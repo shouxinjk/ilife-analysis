@@ -158,14 +158,14 @@ public class CreateEvaluateTaskBolt extends BaseRichBolt {
             				type = column.getVal().toString();
             				priority = typePriority.get(type)+900;//根据基础priority计算得到，所有叶子节点都列为最高优先级，注意，这一优先级需要更新到evaluate任务
             			}
-            			if("evaluate".equalsIgnoreCase(column.getColumnName())) {
+            			if("evaluation".equalsIgnoreCase(column.getColumnName())) {
             				evalute = column.getVal().toString();
             			}
             		}
             		item.add(new Column("priority",priority,Types.INTEGER));//priority:叶子节点优先级手动设置为900
             		items.add(item);
             		//更新对应evaluate任务优先级
-            		String updateSql = "update evaluate set priority='_PRIORITY' where itemKey='_ITEMKEY' and evalute='_EVALUATE' and type='_TYPE'"
+            		String updateSql = "update evaluation set priority='_PRIORITY' where itemKey='_ITEMKEY' and evalution='_EVALUATE' and type='_TYPE'"
             				.replace("_PRIORITY", ""+priority)
             				.replace("_ITEMKEY", tuple.getValueByField("_key").toString())
             				.replace("_EVALUATE", evalute)
