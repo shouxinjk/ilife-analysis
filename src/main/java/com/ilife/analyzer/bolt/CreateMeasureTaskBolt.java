@@ -117,7 +117,7 @@ public class CreateMeasureTaskBolt extends BaseRichBolt {
     	//select int.dimension_id as dimension,int.measure_id as measure, int.weight as weight from mod_category cat,int_item_dimension_measure int where cat.name=? and cat.id=int.category
     		//2，写入分析库
     	//insert ignore into measureproperty (itemKey,dimension,property,weight,status,priority,createdOn,modifiedOn) values()
-        sqlQuery = "select int.dimension_id as dimension,int.measure_id as measure, int.weight as weight from mod_item_category cat,int_item_dimension_measure int where cat.name=? and cat.id=int.category";
+        sqlQuery = "select inter.dimension_id as dimension,inter.measure_id as measure, inter.weight as weight from mod_item_category cat,int_item_dimension_measure inter where cat.name=? and cat.id=inter.category";
         logger.debug("try to query pending measure-property.[SQL]"+sqlQuery+"[param]"+queryParams);
         sqlInsert = "insert ignore into measure_property (itemKey,dimension,property,weight,status,priority,revision,createdOn,modifiedOn) values(?,?,?,?,'pending',?,1,now(),now())";
         items = new ArrayList<List<Column>>();

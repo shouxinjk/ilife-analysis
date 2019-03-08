@@ -56,7 +56,7 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
     protected ConnectionProvider connectionProviderBiz;
     protected ConnectionProvider connectionProviderAnalyze;
     
-    String[] inputFields = {"itemKey","evaluate","type","script","category","isFeature","itemKey2","evaluate2"};//输入字段包含itemkey和category，其中isFeature用于判定是否需要同步到ArangoDB
+    String[] inputFields = {"itemKey","evaluate","type","script","category","featured","itemKey2","evaluate2"};//输入字段包含itemkey和category，其中isFeature用于判定是否需要同步到ArangoDB
     String[] outfields = inputFields;//将数据继续传递
     
     public DynamicEvaluateBolt(Properties prop,String database,String collection,ConnectionProvider connectionProviderBiz,ConnectionProvider connectionProviderAnalyze) {
@@ -150,7 +150,7 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
 	        jdbcClientAnalyze.executeSql(sqlUpdate); 
 	       
 	        //4，同步到Arango
-	        if(tuple.getBooleanByField("isFeature"))  {
+	        if(tuple.getBooleanByField("featured"))  {
 	        		syncText(tuple.getValueByField("_key").toString(),tuple.getValueByField("type").toString(),sb.toString());
 	        }
 	    }else {//could not happend. 如果没有对应的值：do nothing
@@ -187,7 +187,7 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
 	        jdbcClientAnalyze.executeSql(sqlUpdate); 
 	        
 	        //4，同步到Arango
-	        if(tuple.getBooleanByField("isFeature"))  {
+	        if(tuple.getBooleanByField("featured"))  {
 	        		syncText(tuple.getValueByField("_key").toString(),tuple.getValueByField("type").toString(),sb.toString());
 	        }	        
 	    }else {//could not happend. 如果没有对应的值：do nothing
@@ -221,7 +221,7 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
 	    		logger.debug("try to update dynamic calculate result.[SQL]"+sqlUpdate);
 	        jdbcClientAnalyze.executeSql(sqlUpdate); 
 	        //3，同步到Arango
-	        if(tuple.getBooleanByField("isFeature"))  {
+	        if(tuple.getBooleanByField("featured"))  {
 	        		syncScore(tuple.getValueByField("_key").toString(),tuple.getValueByField("type").toString(),Double.parseDouble(row.get(1).getVal().toString()));
 	        }	        
 	    }else {//could not happend. 如果没有对应的值：do nothing
@@ -264,7 +264,7 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
 	        jdbcClientAnalyze.executeSql(sqlUpdate); 
 	        
 	        //4，同步到Arango
-	        if(tuple.getBooleanByField("isFeature"))  {
+	        if(tuple.getBooleanByField("featured"))  {
 	        		syncText(tuple.getValueByField("_key").toString(),tuple.getValueByField("type").toString(),value.toString());
 	        }
 	    }else {//如果没有对应的值：do nothing
