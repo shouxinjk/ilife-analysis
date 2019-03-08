@@ -41,10 +41,11 @@ import com.ilife.analyzer.topology.AbstractTopology;
  * 2.2.2，将数值写入标注数据库
  * 
  * 拓扑图：
- * 采集库-----分析库
+ * 采集库-----Arango分析库（保持原始结构）
  *        \--JSON解析为键值对-----写入属性库（category、property、itemKey、value）
  *                           |--写入标注库（category、property、value）
  *                           |--建立客观评价任务（measure、property、weight、priority）
+ *                           |--建立主观评价任务（evaluation、dimension、weight、priority）
  */
 public class Load extends AbstractTopology {
 	    String arango_harvest = "sea";//采集库，存放原始采集数据

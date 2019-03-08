@@ -100,7 +100,7 @@ public class CreateEvaluateTaskBolt extends BaseRichBolt {
      	//select mod.parent_id as parent,mod.id as evaluation, mod.weight as weight,mod.type as type,mod.parent_ids as depth from mod_category cat,mod_item_evaluation mod where cat.name=? and cat.id=mod.category
      		//2，写入分析库
      	//insert ignore into evaluation (itemKey,parent,evaluation,weight,type,script,status,priority,revision,createdOn,modifiedOn) values()
-    		String sqlQuery = "select mod.parent_id as parent,mod.id as evaluation, mod.weight as weight,mod.type as type,mod.method as method,mod.parent_ids as depth,cat.id as category from mod_category cat,mod_item_evaluation mod where cat.name=? and cat.id=mod.category";
+    		String sqlQuery = "select m.parent_id as parent,m.id as evaluation, m.weight as weight,m.type as type,m.method as method,m.parent_ids as depth,cat.id as category from mod_item_category cat,mod_item_evaluation m where cat.name=? and cat.id=m.category";
          logger.debug("try to query pending measure-dimension.[SQL]"+sqlQuery);
          String sqlInsert = "insert ignore into evaluation (itemKey,parent,evaluation,weight,type,script,category,status,priority,reivision,createdOn,modifiedOn) values(?,?,?,?,?,?,?,'pending',?,1,now(),now())";
          List<List<Column>> items = new ArrayList<List<Column>>();
@@ -139,7 +139,7 @@ public class CreateEvaluateTaskBolt extends BaseRichBolt {
     	//select int.evaluation_id as evaluation,int.dimension_id as dimension,int.weight as weight,mod.type as type from mod_category cat,int_item_evaluation_dimension int,mod_item_evaluation mod where cat.name=? and cat.id=int.category and int.evaluation=mod.id
     		//2，写入分析库
     	//insert ignore into evaluation_measure (itemKey,evaluation,dimension,weight,type,script,status,priority,revision,createdOn,modifiedOn) values()
-        sqlQuery = "select int.evaluation_id as evaluation,int.dimension_id as dimension,int.weight as weight,mod.type as type,mod.method as method,cat.id as category from mod_category cat,int_item_evaluation_dimension int,mod_item_evaluation mod where cat.name=? and cat.id=int.category and int.evaluation=mod.id";
+        sqlQuery = "select int.evaluation_id as evaluation,int.dimension_id as dimension,int.weight as weight,m.type as type,m.method as method,cat.id as category from mod_item_category cat,int_item_evaluation_dimension int,mod_item_evaluation m where cat.name=? and cat.id=int.category and int.evaluation=m.id";
         logger.debug("try to query pending evaluation-measure.[SQL]"+sqlQuery);
         sqlInsert = "insert ignore into evaluation_measure (itemKey,evaluation,dimension,weight,type,script,category,status,priority,revision,createdOn,modifiedOn) values(?,?,?,?,?,?,?,'pending',?,1,now(),now())";
         items = new ArrayList<List<Column>>();

@@ -86,7 +86,7 @@ public class CreateMeasureTaskBolt extends BaseRichBolt {
         		//2，写入分析库
         	//insert ignore into measure (itemKey,parent,dimension,weight,status,priority,createdOn,modifiedOn) values()
         		String sqlQuery = "select dim.parent_id as parent,dim.id as dimension, dim.weight as weight,dim.parent_ids as depth from mod_item_category cat,mod_item_dimension dim where cat.name=? and cat.id=dim.category";
-            logger.debug("try to query pending measure-dimension.[SQL]"+sqlQuery);
+            logger.info("try to query pending measure-dimension.[SQL]"+sqlQuery+"[param]"+queryParams);
             String sqlInsert = "insert ignore into measure (itemKey,parent,dimension,weight,status,priority,revision,createdOn,modifiedOn) values(?,?,?,?,'pending',?,1,now(),now())";
             List<List<Column>> items = new ArrayList<List<Column>>();
             List<List<Column>> result = jdbcClientBiz.select(sqlQuery,queryParams);
@@ -118,7 +118,7 @@ public class CreateMeasureTaskBolt extends BaseRichBolt {
     		//2，写入分析库
     	//insert ignore into measureproperty (itemKey,dimension,property,weight,status,priority,createdOn,modifiedOn) values()
         sqlQuery = "select int.dimension_id as dimension,int.measure_id as measure, int.weight as weight from mod_item_category cat,int_item_dimension_measure int where cat.name=? and cat.id=int.category";
-        logger.debug("try to query pending measure-property.[SQL]"+sqlQuery);
+        logger.debug("try to query pending measure-property.[SQL]"+sqlQuery+"[param]"+queryParams);
         sqlInsert = "insert ignore into measure_property (itemKey,dimension,property,weight,status,priority,revision,createdOn,modifiedOn) values(?,?,?,?,'pending',?,1,now(),now())";
         items = new ArrayList<List<Column>>();
         result = jdbcClientBiz.select(sqlQuery,queryParams);

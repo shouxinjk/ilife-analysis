@@ -66,11 +66,12 @@ public class PropertySpout extends BaseRichSpout implements IRichSpout {
 
     public void nextTuple() {
     		//SQL:select category,property,value from property where status='pending' limit 50
-        String sql = "select category,property,value from property where status='?' limit 50";
-        logger.debug("try to query candidate properties.[SQL]"+sql);
+        String sql = "select category,property,value from property where status=? limit 10";
+        logger.debug("try to query candidate properties.[SQL]"+sql+"[query]"+queryParams);
         List<List<Column>> result = jdbcClient.select(sql,queryParams);
         if (result != null && result.size() != 0) {
             for (List<Column> row : result) {
+            		logger.debug("got result.[row]"+row);
                 Values values = new Values();
                 for(Column column : row) {
                     values.add(column.getVal());

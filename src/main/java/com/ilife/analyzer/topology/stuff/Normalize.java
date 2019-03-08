@@ -65,8 +65,8 @@ public class Normalize extends AbstractTopology {
 
             //3，将score、rank更新到property记录
             List<Column> propertySchemaColumns = Lists.newArrayList(
-            		new Column("score", Types.VARCHAR),
-            		new Column("rank", Types.VARCHAR),
+            		new Column("score", Types.DOUBLE),
+            		new Column("rank", Types.INTEGER),
             		new Column("category", Types.VARCHAR),
             		new Column("property", Types.VARCHAR),
             		new Column("value", Types.VARCHAR));
@@ -75,13 +75,13 @@ public class Normalize extends AbstractTopology {
                     .withInsertQuery("update property set score=?,rank=?,modifiedOn=now(),status='ready' where category=? and property=? and value=?");
 
             //装配topology
-            String nameSpout = "normalize_spout";
-            String nameFindScoreBolt = "normalize_find_score";
-            String nameUpdateProperyBolt = "normalize_update_property";
+            String spout = "normalize_spout";
+            String findScoreBolt = "normalize_find_score";
+            String updateProperyBolt = "normalize_update_property_score";
 	        TopologyBuilder builder = new TopologyBuilder();
-	        builder.setSpout(nameSpout, propertySpout, 1);
-	        builder.setBolt(nameFindScoreBolt, jdbcFindScoreBolt, 10).shuffleGrouping(nameSpout);
-	        builder.setBolt(nameUpdateProperyBolt, jdbcUpdateBolt, 1).shuffleGrouping(nameFindScoreBolt);
+	        builder.setSpout(spout, propertySpout, 1);
+	        builder.setBolt(findScoreBolt, jdbcFindScoreBolt, 5).shuffleGrouping(spout);
+	        builder.setBolt(updateProperyBolt, jdbcUpdateBolt, 1).shuffleGrouping(findScoreBolt);
 	        return builder.createTopology();
 	    }
 }
