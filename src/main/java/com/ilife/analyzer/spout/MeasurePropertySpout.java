@@ -67,7 +67,7 @@ public class MeasurePropertySpout extends BaseRichSpout implements IRichSpout {
 
     public void nextTuple() {
     		//从分析库里查询待处理任务:查询pending状态下优先级为900的叶子节点
-        String sql = "select itemKey,dimension,itemKey as itemKey2,dimension as dimension2 from measure where status='pending' and priority>=900 order by priority desc limit 50";
+        String sql = "select itemKey,dimension,itemKey as itemKey2,dimension as dimension2 from measure where status='pending' and priority>=900 order by priority desc limit 10";
         logger.debug("try to query candidate measure-property.[SQL]"+sql);
         List<List<Column>> result = jdbcClient.select(sql,queryParams);
         if (result != null && result.size() != 0) {//如果有则直接发射
