@@ -102,7 +102,7 @@ public class CreateEvaluateTaskBolt extends BaseRichBolt {
      	//insert ignore into evaluation (itemKey,parent,evaluation,weight,type,script,status,priority,revision,createdOn,modifiedOn) values()
     		String sqlQuery = "select m.parent_id as parent,m.id as evaluation, m.weight as weight,m.type as type,m.script as script,m.parent_ids as depth,cat.id as category from mod_item_category cat,mod_item_evaluation m where cat.name=? and cat.id=m.category";
          logger.debug("try to query pending measure-dimension.[SQL]"+sqlQuery);
-         String sqlInsert = "insert ignore into evaluation (itemKey,parent,evaluation,weight,type,script,category,status,priority,reivision,createdOn,modifiedOn) values(?,?,?,?,?,?,?,'pending',?,1,now(),now())";
+         String sqlInsert = "insert ignore into evaluation (itemKey,parent,evaluation,weight,type,script,category,status,priority,revision,createdOn,modifiedOn) values(?,?,?,?,?,?,?,'pending',?,1,now(),now())";
          List<List<Column>> items = new ArrayList<List<Column>>();
          List<List<Column>> result = jdbcClientBiz.select(sqlQuery,queryParams);
          if (result != null && result.size() != 0) {
@@ -121,7 +121,7 @@ public class CreateEvaluateTaskBolt extends BaseRichBolt {
              			//根据type设置优先级
              			if("type".equalsIgnoreCase(column.getColumnName())) {
              				String type = column.getVal().toString();
-             				priorityBase = typePriority.get(type);
+             				priorityBase = typePriority.get(type)==null?0:typePriority.get(type);
              			}
              		}
              		int priority = priorityBase+priorityDepth;
@@ -129,6 +129,7 @@ public class CreateEvaluateTaskBolt extends BaseRichBolt {
              		items.add(item);
              }
  	    		//写入分析库
+            logger.info("try to insert pending evaluate-dimension tasks.[SQL]"+sqlInsert+"[items]"+items);
  	    		jdbcClientAnalyze.executeInsertQuery(sqlInsert, items);	    		
          }else {//没有配置measure-measure的情况：do nothing
          		logger.debug("no more evaluation-evaluation tasks");
@@ -156,7 +157,7 @@ public class CreateEvaluateTaskBolt extends BaseRichBolt {
             			//根据type设置优先级
             			if("type".equalsIgnoreCase(column.getColumnName())) {
             				type = column.getVal().toString();
-            				priority = typePriority.get(type)+900;//根据基础priority计算得到，所有叶子节点都列为最高优先级，注意，这一优先级需要更新到evaluate任务
+            				priority = typePriority.get(type)==null?0:(typePriority.get(type)+900);//根据基础priority计算得到，所有叶子节点都列为最高优先级，注意，这一优先级需要更新到evaluate任务
             			}
             			if("evaluation".equalsIgnoreCase(column.getColumnName())) {
             				evalute = column.getVal().toString();
@@ -165,7 +166,7 @@ public class CreateEvaluateTaskBolt extends BaseRichBolt {
             		item.add(new Column("priority",priority,Types.INTEGER));//priority:叶子节点优先级手动设置为900
             		items.add(item);
             		//更新对应evaluate任务优先级
-            		String updateSql = "update evaluation set priority='_PRIORITY' where itemKey='_ITEMKEY' and evalution='_EVALUATE' and type='_TYPE'"
+            		String updateSql = "update evaluation set priority='_PRIORITY' where itemKey='_ITEMKEY' and evaluation='_EVALUATE' and type='_TYPE'"
             				.replace("_PRIORITY", ""+priority)
             				.replace("_ITEMKEY", tuple.getValueByField("_key").toString())
             				.replace("_EVALUATE", evalute)
@@ -173,6 +174,7 @@ public class CreateEvaluateTaskBolt extends BaseRichBolt {
             		jdbcClientAnalyze.executeSql(updateSql);
             }
 	    		//写入分析库
+            logger.info("try to insert pending evaluation-measure tasks.[SQL]"+sqlInsert+"[items]"+items);
 	    		jdbcClientAnalyze.executeInsertQuery(sqlInsert, items);
         }else {//没有配置evaluation-measure的情况：do nothing
 	    		logger.debug("No pending evaluation-measure tasks");

@@ -107,6 +107,7 @@ public class CreateMeasureTaskBolt extends BaseRichBolt {
                 		items.add(item);
                 }
     	    		//写入分析库
+            logger.info("try to insert pending measure-dimension tasks.[SQL]"+sqlInsert+"[items]"+items);
     	    		jdbcClientAnalyze.executeInsertQuery(sqlInsert, items);	    		
         }else {//没有配置measure-measure的情况：do nothing
         		logger.debug("no more measure-dimension tasks");
@@ -141,6 +142,7 @@ public class CreateMeasureTaskBolt extends BaseRichBolt {
             		jdbcClientAnalyze.executeSql(updatePrioritySql);
             }
 	    		//写入分析库
+            logger.info("try to insert pending measure_property tasks.[SQL]"+sqlInsert+"[items]"+items);
 	    		jdbcClientAnalyze.executeInsertQuery(sqlInsert, items);
         }else {//没有配置measure-property的情况：do nothing
 	    		logger.debug("No pending measure-property tasks");
