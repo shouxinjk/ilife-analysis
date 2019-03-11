@@ -1,4 +1,4 @@
-package com.ilife.analyzer.spout;
+package com.ilife.analyzer.spout.stuff;
 
 import org.apache.log4j.Logger;
 import org.apache.storm.Config;
@@ -18,13 +18,11 @@ import java.sql.Types;
 import java.util.*;
 
 /**
- * 获取待处理evaluate-measure任务
- * 如果记录为空，则更新所有记录状态为pending，并升级版本。
- * 如果有待处理归一化记录，则直接发射供后续bolt进行归一化操作
+ * 查询得到propertyID为空的proeprty记录
  * @author alexchew
  *
  */
-public class EvaluateMeasureSpout extends BaseRichSpout implements IRichSpout {
+public class PropertyIdSpout extends BaseRichSpout implements IRichSpout {
     boolean isDistributed;
     SpoutOutputCollector collector;
     Integer queryTimeoutSecs;
@@ -32,13 +30,9 @@ public class EvaluateMeasureSpout extends BaseRichSpout implements IRichSpout {
     protected ConnectionProvider connectionProvider;
     public List<Column> queryParams;
     
-    private static final Logger logger = Logger.getLogger(EvaluateMeasureSpout.class);
+    private static final Logger logger = Logger.getLogger(PropertyIdSpout.class);
     
-    public EvaluateMeasureSpout(ConnectionProvider connectionProvider) {
-        this(connectionProvider,connectionProvider);
-    }
-    
-    public EvaluateMeasureSpout(ConnectionProvider connectionProvider,ConnectionProvider bizConnectionProvider) {
+    public PropertyIdSpout(ConnectionProvider connectionProvider) {
         this.isDistributed = true;
         this.connectionProvider = connectionProvider;
         this.queryParams = new ArrayList<Column>();
@@ -65,26 +59,24 @@ public class EvaluateMeasureSpout extends BaseRichSpout implements IRichSpout {
     }
 
     public void nextTuple() {
-    		//从分析库里查询待处理任务:查询pending状态下优先级为900的叶子节点
-        String sql = "select itemKey,evaluation,type,script,category,featured,itemKey as itemKey2,evaluation as evaluation2 from evaluation where status='pending' and priority>=900 order by priority desc limit 10";
-        logger.debug("try to query candidate evaluate-measure.[SQL]"+sql);
+        String sql = "select categoryId,property as PropertyName from property where propertyId is null and categoryId is not null limit 20";
+        logger.debug("try to query candidate properties.[SQL]"+sql+"[query]"+queryParams);
         List<List<Column>> result = jdbcClient.select(sql,queryParams);
-        if (result != null && result.size() != 0) {//如果有则直接发射
+        if (result != null && result.size() != 0) {
             for (List<Column> row : result) {
+            		logger.debug("got result.[row]"+row);
                 Values values = new Values();
                 for(Column column : row) {
                     values.add(column.getVal());
                 }
                 this.collector.emit(values);
             }
-        }else {//如果没有待处理记录
-        		//将所有记录状态更新为pending，并且版本+1
-        		sql = "update evaluation set status='pending',revision=revision+1 where priority>=900";
-        		logger.debug("try to update evaluate revision.[SQL]"+sql);
-            jdbcClient.executeSql(sql); 
+        }else {//do nothing
+        		logger.info("none record has propertyId=null.");
         }
         Thread.yield();
     }
+
 
     public void ack(Object msgId) {
     	//TODO here we should update ta_user.lastEvaluatedOn
@@ -95,7 +87,7 @@ public class EvaluateMeasureSpout extends BaseRichSpout implements IRichSpout {
     }
 
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("itemKey","evaluation","type","script","category","featured","itemKey2","evaluation2"));//便于后续查询，作为冗余参数传递
+        declarer.declare(new Fields("categoryId","propertyName"));
     }
 
     @Override

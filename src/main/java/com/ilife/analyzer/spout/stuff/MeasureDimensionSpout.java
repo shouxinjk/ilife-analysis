@@ -1,4 +1,4 @@
-package com.ilife.analyzer.spout;
+package com.ilife.analyzer.spout.stuff;
 
 import org.apache.log4j.Logger;
 import org.apache.storm.Config;
@@ -18,11 +18,14 @@ import java.sql.Types;
 import java.util.*;
 
 /**
- * 查询得到propertyID为空的proeprty记录
+ * 获取待处理measure-property任务
+ * 如果记录为空，则更新所有记录状态为pending，并升级版本。
+ * 如果记录为空，则根据normalize中差异itemKey从业务库读取measure-property配置。
+ * 如果有待处理归一化记录，则直接发射供后续bolt进行归一化操作
  * @author alexchew
  *
  */
-public class PropertyIdSpout extends BaseRichSpout implements IRichSpout {
+public class MeasureDimensionSpout extends BaseRichSpout implements IRichSpout {
     boolean isDistributed;
     SpoutOutputCollector collector;
     Integer queryTimeoutSecs;
@@ -30,9 +33,13 @@ public class PropertyIdSpout extends BaseRichSpout implements IRichSpout {
     protected ConnectionProvider connectionProvider;
     public List<Column> queryParams;
     
-    private static final Logger logger = Logger.getLogger(PropertyIdSpout.class);
+    private static final Logger logger = Logger.getLogger(MeasureDimensionSpout.class);
     
-    public PropertyIdSpout(ConnectionProvider connectionProvider) {
+    public MeasureDimensionSpout(ConnectionProvider connectionProvider) {
+        this(connectionProvider,connectionProvider);
+    }
+    
+    public MeasureDimensionSpout(ConnectionProvider connectionProvider,ConnectionProvider bizConnectionProvider) {
         this.isDistributed = true;
         this.connectionProvider = connectionProvider;
         this.queryParams = new ArrayList<Column>();
@@ -59,24 +66,26 @@ public class PropertyIdSpout extends BaseRichSpout implements IRichSpout {
     }
 
     public void nextTuple() {
-        String sql = "select categoryId,property as PropertyName from property where propertyId is null and categoryId is not null limit 20";
-        logger.debug("try to query candidate properties.[SQL]"+sql+"[query]"+queryParams);
+    		//从分析库里查询待处理任务:查询pending状态下优先级小于900的子节点，并且优先级高的先处理。表示先处理末端节点，后处理父级节点
+        String sql = "select itemKey,dimension,itemKey as itemKey2,dimension as dimension2 from measure where status='pending' and priority<900 order by priority desc limit 10";
+        logger.debug("try to query candidate measure-dimension.[SQL]"+sql);
         List<List<Column>> result = jdbcClient.select(sql,queryParams);
-        if (result != null && result.size() != 0) {
+        if (result != null && result.size() != 0) {//如果有则直接发射
             for (List<Column> row : result) {
-            		logger.debug("got result.[row]"+row);
                 Values values = new Values();
                 for(Column column : row) {
                     values.add(column.getVal());
                 }
                 this.collector.emit(values);
             }
-        }else {//do nothing
-        		logger.info("none record has propertyId=null.");
+        }else {//如果没有待处理记录
+        		//将所有记录状态更新为pending，并且版本+1
+        		sql = "update measure set status='pending',revision=revision+1 where priority<900";
+        		logger.debug("try to update measure revision.[SQL]"+sql);
+            jdbcClient.executeSql(sql); 
         }
         Thread.yield();
     }
-
 
     public void ack(Object msgId) {
     	//TODO here we should update ta_user.lastEvaluatedOn
@@ -87,7 +96,7 @@ public class PropertyIdSpout extends BaseRichSpout implements IRichSpout {
     }
 
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("categoryId","propertyName"));
+        declarer.declare(new Fields("itemKey","dimension","itemKey2","dimension2"));//便于后续查询，作为冗余参数传递
     }
 
     @Override

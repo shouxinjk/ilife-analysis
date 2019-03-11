@@ -27,9 +27,9 @@ import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
 
 import com.google.common.collect.Lists;
-import com.ilife.analyzer.bolt.DynamicEvaluateBolt;
-import com.ilife.analyzer.spout.EvaluateMeasureSpout;
-import com.ilife.analyzer.spout.MeasurePropertySpout;
+import com.ilife.analyzer.bolt.stuff.DynamicEvaluateBolt;
+import com.ilife.analyzer.spout.stuff.EvaluateMeasureSpout;
+import com.ilife.analyzer.spout.stuff.MeasurePropertySpout;
 import com.ilife.analyzer.topology.AbstractTopology;
 
 /**

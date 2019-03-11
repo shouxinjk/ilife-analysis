@@ -1,4 +1,4 @@
-package com.ilife.analyzer.spout;
+package com.ilife.analyzer.spout.stuff;
 
 import org.apache.log4j.Logger;
 import org.apache.storm.Config;
@@ -18,13 +18,14 @@ import java.sql.Types;
 import java.util.*;
 
 /**
- * 获取待处理evaluate-evaluate任务
+ * 获取待处理measure-property任务
  * 如果记录为空，则更新所有记录状态为pending，并升级版本。
+ * 如果记录为空，则根据normalize中差异itemKey从业务库读取measure-property配置。
  * 如果有待处理归一化记录，则直接发射供后续bolt进行归一化操作
  * @author alexchew
  *
  */
-public class EvaluateDimensionSpout extends BaseRichSpout implements IRichSpout {
+public class MeasurePropertySpout extends BaseRichSpout implements IRichSpout {
     boolean isDistributed;
     SpoutOutputCollector collector;
     Integer queryTimeoutSecs;
@@ -32,13 +33,13 @@ public class EvaluateDimensionSpout extends BaseRichSpout implements IRichSpout 
     protected ConnectionProvider connectionProvider;
     public List<Column> queryParams;
     
-    private static final Logger logger = Logger.getLogger(EvaluateDimensionSpout.class);
+    private static final Logger logger = Logger.getLogger(MeasurePropertySpout.class);
     
-    public EvaluateDimensionSpout(ConnectionProvider connectionProvider) {
+    public MeasurePropertySpout(ConnectionProvider connectionProvider) {
         this(connectionProvider,connectionProvider);
     }
     
-    public EvaluateDimensionSpout(ConnectionProvider connectionProvider,ConnectionProvider bizConnectionProvider) {
+    public MeasurePropertySpout(ConnectionProvider connectionProvider,ConnectionProvider bizConnectionProvider) {
         this.isDistributed = true;
         this.connectionProvider = connectionProvider;
         this.queryParams = new ArrayList<Column>();
@@ -65,9 +66,9 @@ public class EvaluateDimensionSpout extends BaseRichSpout implements IRichSpout 
     }
 
     public void nextTuple() {
-    		//从分析库里查询待处理任务:查询pending状态的非叶子节点: isFeature用于判定是否是顶级节点
-        String sql = "select itemKey,evaluation,type,script,category,featured,itemKey as itemKey2,evaluation as evaluation2 from evaluation where status='pending' and priority<900 order by priority desc limit 10";
-        logger.debug("try to query candidate evaluation.[SQL]"+sql);
+    		//从分析库里查询待处理任务:查询pending状态下优先级为900的叶子节点
+        String sql = "select itemKey,dimension,itemKey as itemKey2,dimension as dimension2 from measure where status='pending' and priority>=900 order by priority desc limit 10";
+        logger.debug("try to query candidate measure-property.[SQL]"+sql);
         List<List<Column>> result = jdbcClient.select(sql,queryParams);
         if (result != null && result.size() != 0) {//如果有则直接发射
             for (List<Column> row : result) {
@@ -79,8 +80,8 @@ public class EvaluateDimensionSpout extends BaseRichSpout implements IRichSpout 
             }
         }else {//如果没有待处理记录
         		//将所有记录状态更新为pending，并且版本+1
-        		sql = "update evaluation set status='pending',revision=revision+1 where priority<900";
-        		logger.debug("try to update evaluation revision.[SQL]"+sql);
+        		sql = "update measure set status='pending',revision=revision+1 where priority>=900";
+        		logger.debug("try to update measure revision.[SQL]"+sql);
             jdbcClient.executeSql(sql); 
         }
         Thread.yield();
@@ -95,7 +96,7 @@ public class EvaluateDimensionSpout extends BaseRichSpout implements IRichSpout 
     }
 
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("itemKey","evaluation","type","script","category","featured","itemKey2","evaluation2"));//便于后续查询，作为冗余参数传递
+        declarer.declare(new Fields("itemKey","dimension","itemKey2","dimension2"));//便于后续查询，作为冗余参数传递
     }
 
     @Override

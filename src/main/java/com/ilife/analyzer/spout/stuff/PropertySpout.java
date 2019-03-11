@@ -1,4 +1,4 @@
-package com.ilife.analyzer.spout;
+package com.ilife.analyzer.spout.stuff;
 
 import org.apache.log4j.Logger;
 import org.apache.storm.Config;

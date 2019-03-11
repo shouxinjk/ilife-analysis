@@ -27,9 +27,9 @@ import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
 
 import com.google.common.collect.Lists;
-import com.ilife.analyzer.bolt.CreateEvaluateTaskBolt;
-import com.ilife.analyzer.bolt.CreateMeasureTaskBolt;
-import com.ilife.analyzer.bolt.JsonParseBolt;
+import com.ilife.analyzer.bolt.stuff.CreateEvaluateTaskBolt;
+import com.ilife.analyzer.bolt.stuff.CreateMeasureTaskBolt;
+import com.ilife.analyzer.bolt.stuff.JsonParseBolt;
 import com.ilife.analyzer.topology.AbstractTopology;
 
 /**
