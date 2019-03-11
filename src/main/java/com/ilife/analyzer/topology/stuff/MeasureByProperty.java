@@ -52,7 +52,7 @@ public class MeasureByProperty extends AbstractTopology {
 	    		
 	    		//2，JdbcLookupBolt：查询并汇总叶子节点关联属性的加权得分，对应于特定itemKey以及dimension
 	    		//注意：当前默认采用加权汇总算法，如果是独立算法则需要定义Bolt
-            String sql = "select sum(mp.weight*p.score) as score, ? as itemKey, ? as dimension from measure m,measure_property mp,property p where m.itemKey=? and m.dimension=? and mp.dimension=m.dimension and mp.property=p.property and p.itemKey=m.itemKey";
+            String sql = "select sum(mp.weight*p.score) as score, ? as itemKey, ? as dimension from measure m,measure_property mp,property p where m.itemKey=? and m.dimension=? and mp.dimension=m.dimension and mp.property=p.propertyId and p.itemKey=m.itemKey";
             List<Column> queryParamColumns = Lists.newArrayList(
             		new Column("itemKey", Types.VARCHAR),
             		new Column("dimension", Types.VARCHAR),

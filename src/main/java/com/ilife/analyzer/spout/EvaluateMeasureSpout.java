@@ -66,7 +66,7 @@ public class EvaluateMeasureSpout extends BaseRichSpout implements IRichSpout {
 
     public void nextTuple() {
     		//从分析库里查询待处理任务:查询pending状态下优先级为900的叶子节点
-        String sql = "select itemKey,evaluate,type,script,category,itemKey as itemKey2,evaluate as evaluate2 from evaluate where status='pending' and priority>=900 order by priority desc limit 50";
+        String sql = "select itemKey,evaluation,type,script,category,featured,itemKey as itemKey2,evaluation as evaluation2 from evaluation where status='pending' and priority>=900 order by priority desc limit 10";
         logger.debug("try to query candidate evaluate-measure.[SQL]"+sql);
         List<List<Column>> result = jdbcClient.select(sql,queryParams);
         if (result != null && result.size() != 0) {//如果有则直接发射
@@ -79,7 +79,7 @@ public class EvaluateMeasureSpout extends BaseRichSpout implements IRichSpout {
             }
         }else {//如果没有待处理记录
         		//将所有记录状态更新为pending，并且版本+1
-        		sql = "update evaluate set status='pending',revision=revision+1 where priority>=900";
+        		sql = "update evaluation set status='pending',revision=revision+1 where priority>=900";
         		logger.debug("try to update evaluate revision.[SQL]"+sql);
             jdbcClient.executeSql(sql); 
         }
@@ -95,7 +95,7 @@ public class EvaluateMeasureSpout extends BaseRichSpout implements IRichSpout {
     }
 
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("itemKey","evaluate","type","script","category","itemKey2","evaluate2"));//便于后续查询，作为冗余参数传递
+        declarer.declare(new Fields("itemKey","evaluation","type","script","category","featured","itemKey2","evaluation2"));//便于后续查询，作为冗余参数传递
     }
 
     @Override

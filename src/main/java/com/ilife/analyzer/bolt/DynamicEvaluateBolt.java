@@ -56,7 +56,7 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
     protected ConnectionProvider connectionProviderBiz;
     protected ConnectionProvider connectionProviderAnalyze;
     
-    String[] inputFields = {"itemKey","evaluate","type","script","category","featured","itemKey2","evaluate2"};//输入字段包含itemkey和category，其中isFeature用于判定是否需要同步到ArangoDB
+    String[] inputFields = {"itemKey","evaluation","type","script","category","featured","itemKey2","evaluation2"};//输入字段包含itemkey和category，其中isFeature用于判定是否需要同步到ArangoDB
     String[] outfields = inputFields;//将数据继续传递
     
     public DynamicEvaluateBolt(Properties prop,String database,String collection,ConnectionProvider connectionProviderBiz,ConnectionProvider connectionProviderAnalyze) {
@@ -141,9 +141,9 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
             }
 	        //2，更新到数据库
 	        //update evaluate set text='_TEXT',status='ready' where evaluate='_EVALUATE' and type='_TYPE' and itemKey='_ITEMKEY';
-	    		String sqlUpdate = "update evaluate set text='_TEXT',status='ready' where evaluate='_EVALUATE' and type='_TYPE' and itemKey='_ITEMKEY'"
+	    		String sqlUpdate = "update evaluation set text='_TEXT',status='ready' where evaluation='_EVALUATE' and type='_TYPE' and itemKey='_ITEMKEY'"
 			    		.replace("_SCORE", sb.toString())
-			    		.replace("_EVALUATE", tuple.getValueByField("evaluate").toString())
+			    		.replace("_EVALUATE", tuple.getValueByField("evaluation").toString())
 			    		.replace("_TYPE", tuple.getValueByField("type").toString())
 			    		.replace("_ITEMKEY", tuple.getValueByField("itemKey").toString());
 	    		logger.debug("try to update constraint.[SQL]"+sqlUpdate);
@@ -178,9 +178,9 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
             }
 	        //3，更新到数据库
 	        //update evaluate set text='_TEXT',status='ready' where evaluate='_EVALUATE' and type='_TYPE' and itemKey='_ITEMKEY';
-	    		String sqlUpdate = "update evaluate set text='_TEXT',status='ready' where evaluate='_EVALUATE' and type='_TYPE' and itemKey='_ITEMKEY'"
+	    		String sqlUpdate = "update evaluation set text='_TEXT',status='ready' where evaluation='_EVALUATE' and type='_TYPE' and itemKey='_ITEMKEY'"
 			    		.replace("_SCORE", sb.toString())
-			    		.replace("_EVALUATE", tuple.getValueByField("evaluate").toString())
+			    		.replace("_EVALUATE", tuple.getValueByField("evaluation").toString())
 			    		.replace("_TYPE", tuple.getValueByField("type").toString())
 			    		.replace("_ITEMKEY", tuple.getValueByField("itemKey").toString());
 	    		logger.debug("try to update constraint.[SQL]"+sqlUpdate);
@@ -200,7 +200,7 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
      */
     private void evaluateWeightedSumByScore(Tuple tuple) {
 	    	//1，根据itemKey查询键值对并进行加权汇总：查询条件：evaluate,type,itemKey
-	    String sqlQuery = "select sum(em.weight*m.score) as score from evaluate e,evaluate_measure em,measure m where e.itemKey=? and e.evaluation=? and e.type=? and e.evaluation=em.evaluation and em.type=? and em.dimension=m.dimension";
+	    String sqlQuery = "select sum(em.weight*m.score) as score from evaluation e,evaluation_measure em,measure m where e.itemKey=? and e.evaluation=? and e.type=? and e.evaluation=em.evaluation and em.type=? and em.dimension=m.dimension";
 	    logger.debug("try to query weighted sum.[SQL]"+sqlQuery);
 	    List<Column> queryParams=new ArrayList<Column>();
 	    queryParams.add(new Column("itemKey",tuple.getValueByField("itemKey"),Types.VARCHAR));//itemKey
@@ -213,9 +213,9 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
 	        
 	        //2，更新到数据库
 	        //update evaluate set score='_SCORE',status='ready' where evaluate='_EVALUATE' and type='_TYPE' and itemKey='_ITEMKEY';
-	    		String sqlUpdate = "update evaluate set score='_SCORE',status='ready' where evaluate='_EVALUATE' and type='_TYPE' and itemKey='_ITEMKEY'"
-			    		.replace("_SCORE", row.get(1).getVal().toString())
-			    		.replace("_EVALUATE", tuple.getValueByField("evaluate").toString())
+	    		String sqlUpdate = "update evaluation set score='_SCORE',status='ready' where evaluation='_EVALUATE' and type='_TYPE' and itemKey='_ITEMKEY'"
+			    		.replace("_SCORE", row.get(0).getVal().toString())
+			    		.replace("_EVALUATE", tuple.getValueByField("evaluation").toString())
 			    		.replace("_TYPE", tuple.getValueByField("type").toString())
 			    		.replace("_ITEMKEY", tuple.getValueByField("itemKey").toString());
 	    		logger.debug("try to update dynamic calculate result.[SQL]"+sqlUpdate);
@@ -225,7 +225,7 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
 	        		syncScore(tuple.getValueByField("_key").toString(),tuple.getValueByField("type").toString(),Double.parseDouble(row.get(1).getVal().toString()));
 	        }	        
 	    }else {//could not happend. 如果没有对应的值：do nothing
-	    		logger.debug("Failed to weighted-sum evaluate-measure score");
+	    		logger.debug("Failed to weighted-sum evaluation-measure score");
 	    }
     }   
     
@@ -243,10 +243,10 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
 	    List<List<Column>> result = jdbcClientAnalyze.select(sqlQuery,queryParams);
 	    if (result != null && result.size() != 0) {
 	        for (List<Column> row : result) {//逐行解析并放入参数，每一个key包含三个值，格式为property.value-value,property.score-score,property.rank-rank
-	        		binding.setVariable(row.get(0).getVal().toString(), row.get(1).getVal());//可以通过键名得到数值，相当于property.value
-	        		binding.setVariable(row.get(0).getVal()+".value", row.get(1).getVal());
-	        		binding.setVariable(row.get(0).getVal()+".score", row.get(2).getVal());
-	        		binding.setVariable(row.get(0).getVal()+".rank", row.get(3).getVal());
+	        		binding.setVariable(row.get(0).getVal().toString(), row.get(0).getVal());//可以通过键名得到数值，相当于property.value
+	        		binding.setVariable(row.get(0).getVal()+".value", row.get(0).getVal());
+	        		binding.setVariable(row.get(0).getVal()+".score", row.get(1).getVal());
+	        		binding.setVariable(row.get(0).getVal()+".rank", row.get(2).getVal());
 	        }
 
 	        //2，Groovy脚本计算。脚本中引用变量需要通过property+value/score/rank的组合
@@ -255,9 +255,9 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
 
 	        //3，更新到数据库
 	        //update evaluate set score='_SCORE',text='_TEXT',status='ready' where evaluate='_EVALUATE' and type='_TYPE' and itemKey='_ITEMKEY';
-	    		String sqlUpdate = "update evaluate set text='_TEXT',status='ready' where evaluate='_EVALUATE' and type='_TYPE' and itemKey='_ITEMKEY'"
+	    		String sqlUpdate = "update evaluation set text='_TEXT',status='ready' where evaluation='_EVALUATE' and type='_TYPE' and itemKey='_ITEMKEY'"
 			    		.replace("_TEXT", value.toString())
-			    		.replace("_EVALUATE", tuple.getValueByField("evaluate").toString())
+			    		.replace("_EVALUATE", tuple.getValueByField("evaluation").toString())
 			    		.replace("_TYPE", tuple.getValueByField("type").toString())
 			    		.replace("_ITEMKEY", tuple.getValueByField("_key").toString());
 	    		logger.debug("try to update dynamic calculate result.[SQL]"+sqlUpdate);

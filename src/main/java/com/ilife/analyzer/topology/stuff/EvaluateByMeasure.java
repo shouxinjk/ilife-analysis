@@ -28,6 +28,7 @@ import org.apache.storm.tuple.Fields;
 
 import com.google.common.collect.Lists;
 import com.ilife.analyzer.bolt.DynamicEvaluateBolt;
+import com.ilife.analyzer.spout.EvaluateMeasureSpout;
 import com.ilife.analyzer.spout.MeasurePropertySpout;
 import com.ilife.analyzer.topology.AbstractTopology;
 
@@ -50,7 +51,7 @@ public class EvaluateByMeasure extends AbstractTopology {
 	    @Override
 	    public StormTopology getTopology() {
 	    		//1，读取叶子节点，返回：id，dimension
-	    		MeasurePropertySpout leaves = new MeasurePropertySpout(analyzeConnectionProvider);
+	    		EvaluateMeasureSpout leaves = new EvaluateMeasureSpout(analyzeConnectionProvider);
 	    		
 	    		//2，DynamicEvaluateBolt：分别评价各个主观维度的叶子节点，包括score及text计算
 	    		DynamicEvaluateBolt dynamicEvaluateBolt = new DynamicEvaluateBolt(props,database,collection,businessConnectionProvider,analyzeConnectionProvider);
