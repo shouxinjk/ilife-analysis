@@ -8,7 +8,7 @@ import org.apache.storm.topology.TopologyBuilder;
 
 import com.ilife.analyzer.topology.AbstractTopology;
 
-public class EvaluatePerson  extends AbstractTopology {
+public class CheckPersona  extends AbstractTopology {
 	   private static final String SPOUT_KAFKA_CHANGE_PERSONA = "SPOUT_KAFKA_CHANGE_PERSONA".toLowerCase();
 	    private static final String BOLT_CHANGE_PERSONA_NEED = "BOLT_CHANGE_PERSONA_NEED".toLowerCase();
 	    private static final String BOLT_CHANGE_PERSONA_OCCASION = "BOLT_CHANGE_PERSONA_OCCASION".toLowerCase();
@@ -17,7 +17,7 @@ public class EvaluatePerson  extends AbstractTopology {
 	    String database = "forge";
 	    
 	    public static void main(String[] args) throws Exception {
-	        new EvaluatePerson().execute(args);
+	        new CheckPersona().execute(args);
 	    }
 
 	    @Override

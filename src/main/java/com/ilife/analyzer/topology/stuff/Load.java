@@ -27,9 +27,9 @@ import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
 
 import com.google.common.collect.Lists;
+import com.ilife.analyzer.bolt.JsonParseBolt;
 import com.ilife.analyzer.bolt.stuff.CreateEvaluateTaskBolt;
 import com.ilife.analyzer.bolt.stuff.CreateMeasureTaskBolt;
-import com.ilife.analyzer.bolt.stuff.JsonParseBolt;
 import com.ilife.analyzer.topology.AbstractTopology;
 
 /**
@@ -71,7 +71,9 @@ public class Load extends AbstractTopology {
 	    		
 	    		//2.2，按照属性打散数据记录写入key-value数据库
 	    		//2.2.1，将json打散为行列数据
-	    		JsonParseBolt jsonParser = new JsonParseBolt("_doc","category","_key");//从 _doc字段读取json字符串，输出key、value字段; 并且附加其他字段如category,itemKey
+	    		String[] infields = {"_doc","category","_key"};
+	    		String[] outfields = {"property","value","category","itemKey"};
+	    		JsonParseBolt jsonParser = new JsonParseBolt(infields,outfields);//从 _doc字段读取json字符串，输出key、value字段; 并且附加其他字段如category,itemKey
 	    		
 	    		//2.2.2，行列数据写入关系数据库:category,property(key),value,status,modifiedOn。用于归一化任务。
             List<Column> columns = Lists.newArrayList(

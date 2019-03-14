@@ -1,5 +1,5 @@
 
-package com.ilife.analyzer.bolt.stuff;
+package com.ilife.analyzer.bolt;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -39,8 +39,13 @@ public class JsonParseBolt extends BaseRichBolt {
     String[] inputFields = {"_doc"};//需要输入的字段，第一个必须是json字段
     String[] outfields = {"property","value","category","itemKey"};
     
-    public JsonParseBolt(String... fields) {
-    		this.inputFields = fields;
+//    public JsonParseBolt(String... fields) {
+//    		this.inputFields = fields;
+//    }
+    
+    public JsonParseBolt(String[] input,String[] output) {
+		this.inputFields = input;
+		this.outfields = output;
     }
     
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector collector) {
