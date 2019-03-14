@@ -52,7 +52,7 @@ public abstract class AbstractTopology {
     protected static final String JDBC_CONF = "jdbc.conf";
     
     public void execute(String[] args) throws Exception {
-    	//here we load configurations from properties file
+    		//here we load configurations from properties file
         props.load(AbstractTopology.class.getClassLoader().getResourceAsStream("ilife.properties"));
         
         //prepare storm configuration
@@ -96,12 +96,12 @@ public abstract class AbstractTopology {
         jdbcConfigMap.put("dataSource.url", props.getProperty("mysql.TYPE.url".replace("TYPE", type)));//jdbc:mysql://localhost/test
         jdbcConfigMap.put("dataSource.user", props.getProperty("mysql.TYPE.user".replace("TYPE", type)));//root
         jdbcConfigMap.put("dataSource.password", props.getProperty("mysql.TYPE.password".replace("TYPE", type)));//password
-//        try{
-//	        jdbcConfigMap.put("minimumIdle", Integer.parseInt(props.getProperty("mysql.minimumIdle")));//minIdle
-//        }catch(Exception ex){
-//        		jdbcConfigMap.put("minimumIdle", 2);
-//	        logger.error("Cannot read minimumIdle from properties.",ex);
-//        }
+        try{
+	        jdbcConfigMap.put("minimumIdle", Integer.parseInt(props.getProperty("mysql.minimumIdle")));//minIdle
+        }catch(Exception ex){//如果未设置则使用默认值，与maximumPoolSize相同，为固定大小
+        		//jdbcConfigMap.put("minimumIdle", 2);
+	        logger.error("Cannot read minimumIdle from properties.",ex);
+        }
         try{
 	        jdbcConfigMap.put("maximumPoolSize", Integer.parseInt(props.getProperty("mysql.maximumPoolSize")));//maxPoolSize
         }catch(Exception ex){
