@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package com.ilife.analyzer.bolt.stuff;
+package com.ilife.analyzer.bolt;
 
 import java.util.Map;
 import java.util.Properties;
