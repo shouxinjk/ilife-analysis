@@ -1,5 +1,5 @@
 
-package com.ilife.analyzer.bolt.stuff;
+package com.ilife.analyzer.bolt.person;
 import org.apache.storm.task.OutputCollector;
 import org.apache.storm.task.TopologyContext;
 import org.apache.storm.topology.OutputFieldsDeclarer;
@@ -31,9 +31,9 @@ import java.util.Properties;
 /**
  * 
  * 建立客观评价任务，包括6个类别：
- * 1，效益评价：类型为perform，有多条，有多级，按优先级排序。优先级800+,叶子节点900
- * 2，成本评价：类型为cost，有多条，有多级，按优先级排序。优先级700+，叶子节点800
- * 3，约束评价：类型为filter，有多条，仅一级，优先级600+
+ * 1，期望评价：类型为perform，有多条，有多级，按优先级排序。优先级800+,叶子节点900
+ * 2，能力评价：类型为cost，有多条，有多级，按优先级排序。优先级700+，叶子节点800
+ * 3，约束评价：类型为constraint，有多条，仅一级，优先级600+
  * 4，需求满足度评价：类型为satisfy，仅一条，优先级500
  * 5，情境满足度评价：类型为context，仅一条，优先级400
  * 6，偏好评价：类型为style，仅一条，优先级300
@@ -55,8 +55,8 @@ public class CreateEvaluateTaskBolt extends BaseRichBolt {
     protected ConnectionProvider connectionProviderBiz;
     protected ConnectionProvider connectionProviderAnalyze;
     
-    String[] inputFields = {"_key","category"};//输入字段包含itemkey和category
-    String[] outfields = {"itemKey","category"};//输出字段包含itemKey和Category，便于创建后续分析任务
+    String[] inputFields = {"_key"};//输入字段包含itemkey
+    String[] outfields = {"userKey"};//输出字段包含userKey，便于创建后续分析任务
     
     Map<String,Integer> typePriority = new HashMap<String,Integer>();
     
@@ -91,24 +91,24 @@ public class CreateEvaluateTaskBolt extends BaseRichBolt {
     }
 
     public void execute(Tuple tuple) {
-    	 	String category = tuple.getStringByField("category");//获取category字段
+    	 	//String category = tuple.getStringByField("category");//获取category字段
     	 	queryParams.clear();
-        queryParams.add(new Column("category", category, Types.VARCHAR));
+        //queryParams.add(new Column("category", category, Types.VARCHAR));
         
  	    	//查询evaluation-evaluation记录
  		//1，查询业务库得到evaluation-evaluation记录
      	//select mod.parent_id as parent,mod.id as evaluation, mod.weight as weight,mod.type as type,mod.parent_ids as depth from mod_category cat,mod_item_evaluation mod where cat.name=? and cat.id=mod.category
      		//2，写入分析库
-     	//insert ignore into evaluation (itemKey,parent,evaluation,weight,type,script,status,priority,revision,createdOn,modifiedOn) values()
-    		String sqlQuery = "select m.parent_id as parent,m.id as evaluation, m.weight as weight,m.type as type,m.script as script,m.parent_ids as depth,cat.id as category from mod_item_category cat,mod_item_evaluation m where cat.name=? and cat.id=m.category";
+     	//insert ignore into evaluation (userKey,parent,evaluation,weight,type,script,status,priority,revision,createdOn,modifiedOn) values()
+    		String sqlQuery = "select m.parent_id as parent,m.id as evaluation, m.weight as weight,m.type as type,m.script as script,m.parent_ids as depth from mod_user_evaluation m";
          logger.debug("try to query pending measure-dimension.[SQL]"+sqlQuery);
-         String sqlInsert = "insert ignore into evaluation (itemKey,parent,evaluation,weight,type,script,category,status,priority,revision,createdOn,modifiedOn) values(?,?,?,?,?,?,?,'pending',?,1,now(),now())";
+         String sqlInsert = "insert ignore into user_evaluation (userKey,parent,evaluation,weight,type,script,status,priority,revision,createdOn,modifiedOn) values(?,?,?,?,?,?,'pending',?,1,now(),now())";
          List<List<Column>> items = new ArrayList<List<Column>>();
          List<List<Column>> result = jdbcClientBiz.select(sqlQuery,queryParams);
          if (result != null && result.size() != 0) {
              for (List<Column> row : result) {
              		List<Column> item = new ArrayList<Column>();
-             		item.add(new Column("itemKey",tuple.getValueByField("_key"),Types.VARCHAR));//itemKey
+             		item.add(new Column("userKey",tuple.getValueByField("_key"),Types.VARCHAR));//userKey
              		int priorityBase = 400;//根据type动态修改
              		int priorityDepth = 0;
              		for(Column column:row) {//dimension，measure，weight
@@ -139,16 +139,16 @@ public class CreateEvaluateTaskBolt extends BaseRichBolt {
     		//1，查询业务库得到evaluate-measure记录
     	//select int.evaluation_id as evaluation,int.dimension_id as dimension,int.weight as weight,mod.type as type from mod_category cat,int_item_evaluation_dimension int,mod_item_evaluation mod where cat.name=? and cat.id=int.category and int.evaluation=mod.id
     		//2，写入分析库
-    	//insert ignore into evaluation_measure (itemKey,evaluation,dimension,weight,type,script,status,priority,revision,createdOn,modifiedOn) values()
-        sqlQuery = "select inter.evaluation_id as evaluation,inter.dimension_id as dimension,inter.weight as weight,m.type as type,m.script as script,cat.id as category from mod_item_category cat,int_item_evaluation_dimension inter,mod_item_evaluation m where cat.name=? and cat.id=inter.category and inter.evaluation_id=m.id";
+    	//insert ignore into evaluation_measure (userKey,evaluation,dimension,weight,type,script,status,priority,revision,createdOn,modifiedOn) values()
+        sqlQuery = "select inter.evaluation_id as evaluation,inter.dimension_id as dimension,inter.weight as weight,m.type as type,m.script as script from int_user_evaluation_dimension inter,mod_user_evaluation m where inter.evaluation_id=m.id";
         logger.debug("try to query pending evaluation-measure.[SQL]"+sqlQuery);
-        sqlInsert = "insert ignore into evaluation_measure (itemKey,evaluation,dimension,weight,type,script,category,status,priority,revision,createdOn,modifiedOn) values(?,?,?,?,?,?,?,'pending',?,1,now(),now())";
+        sqlInsert = "insert ignore into user_evaluation_measure (userKey,evaluation,dimension,weight,type,script,status,priority,revision,createdOn,modifiedOn) values(?,?,?,?,?,?,'pending',?,1,now(),now())";
         items = new ArrayList<List<Column>>();
         result = jdbcClientBiz.select(sqlQuery,queryParams);
         if (result != null && result.size() != 0) {
             for (List<Column> row : result) {
             		List<Column> item = new ArrayList<Column>();
-            		item.add(new Column("itemKey",tuple.getValueByField("_key"),Types.VARCHAR));//itemKey
+            		item.add(new Column("userKey",tuple.getValueByField("_key"),Types.VARCHAR));//userKey
             		int priority = 900;
             		String evalute = "";
             		String type="";
@@ -166,9 +166,9 @@ public class CreateEvaluateTaskBolt extends BaseRichBolt {
             		item.add(new Column("priority",priority,Types.INTEGER));//priority:叶子节点优先级手动设置为900
             		items.add(item);
             		//更新对应evaluate任务优先级
-            		String updateSql = "update evaluation set priority='_PRIORITY' where itemKey='_ITEMKEY' and evaluation='_EVALUATE' and type='_TYPE'"
+            		String updateSql = "update user_evaluation set priority='_PRIORITY' where userKey='_USERKEY' and evaluation='_EVALUATE' and type='_TYPE'"
             				.replace("_PRIORITY", ""+priority)
-            				.replace("_ITEMKEY", tuple.getValueByField("_key").toString())
+            				.replace("_USERKEY", tuple.getValueByField("_key").toString())
             				.replace("_EVALUATE", evalute)
             				.replace("_TYPE", type);
             		jdbcClientAnalyze.executeSql(updateSql);
@@ -180,7 +180,7 @@ public class CreateEvaluateTaskBolt extends BaseRichBolt {
 	    		logger.debug("No pending evaluation-measure tasks");
 	    }
  
-        //将itemKey、category向后传递
+        //将userKey、category向后传递
     		try {
 	    		Values values = new Values();
 	    		for(String field:inputFields) {
