@@ -66,7 +66,7 @@ public class EvaluateDimensionSpout extends BaseRichSpout implements IRichSpout 
 
     public void nextTuple() {
     		//从分析库里查询待处理任务:查询pending状态的非叶子节点: isFeature用于判定是否是顶级节点
-        String sql = "select userKey,evaluation,type,script,persona,featured,userKey as userKey2,evaluation as evaluation2 from user_evaluation where status='pending' and priority<900 order by priority desc limit 10";
+        String sql = "select userKey,evaluation,type,category,script,persona,featured,userKey as userKey2,evaluation as evaluation2 from user_evaluation where status='pending' and priority<900 order by priority desc limit 10";
         logger.debug("try to query candidate evaluation.[SQL]"+sql);
         List<List<Column>> result = jdbcClient.select(sql,queryParams);
         if (result != null && result.size() != 0) {//如果有则直接发射
@@ -95,7 +95,7 @@ public class EvaluateDimensionSpout extends BaseRichSpout implements IRichSpout 
     }
 
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("userKey","evaluation","type","script","persona","featured","userKey2","evaluation2"));//便于后续查询，作为冗余参数传递
+        declarer.declare(new Fields("userKey","evaluation","type","category","script","persona","featured","userKey2","evaluation2"));//便于后续查询，作为冗余参数传递
     }
 
     @Override

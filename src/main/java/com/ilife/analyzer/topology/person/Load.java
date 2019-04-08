@@ -30,6 +30,7 @@ import com.google.common.collect.Lists;
 import com.ilife.analyzer.bolt.JsonParseBolt;
 import com.ilife.analyzer.bolt.person.CreateEvaluateTaskBolt;
 import com.ilife.analyzer.bolt.person.CreateMeasureTaskBolt;
+import com.ilife.analyzer.bolt.person.CreateQueryItemBolt;
 import com.ilife.analyzer.topology.AbstractTopology;
 
 /**
@@ -98,15 +99,19 @@ public class Load extends AbstractTopology {
            
             //2.2.4，写入客观评价任务表：
             //写入measure-property：维度和属性关系。读取对应category的dimension-measure定义，写入分析库
-            //写入measure：维度和维度关系。读取对应category的dimension-dimension定义，写入分析库            
+            //写入measure：维度和维度关系。读取对应的dimension-dimension定义，写入分析库            
             CreateMeasureTaskBolt createMeasureTaskBolt = new CreateMeasureTaskBolt(businessConnectionProvider,analyzeConnectionProvider);
             
             //2.2.5，写入主观评价任务表：
             //写入evalute-measure：主观维度和客观维度关系。读取对应category的evaluate-measure定义，写入分析库
-            //写入evaluate：维度和维度关系。读取对应category的dimension-dimension定义，写入分析库            
+            //写入evaluate：维度和维度关系。读取对应的dimension-dimension定义，写入分析库            
             CreateEvaluateTaskBolt createEvaluateTaskBolt = new CreateEvaluateTaskBolt(businessConnectionProvider,analyzeConnectionProvider);
- 
-            //2.2.6，写入分群任务表：           
+
+            //2.2.6，写入查询过滤表：
+            //写入user-query：用户过滤条目。读取对应evaluate-measure定义，写入分析库           
+            CreateQueryItemBolt createQueryItemBolt = new CreateQueryItemBolt(businessConnectionProvider,analyzeConnectionProvider);
+             
+            //2.2.7，写入分群任务表：           
             //读取persona记录
 	        String sql = "select ? as userKey,hierarchy_id as hierarchyId,phase_id as phaseId,id as personaId from mod_persona";
 	        List<Column> queryParamColumns = Lists.newArrayList(
@@ -126,6 +131,15 @@ public class Load extends AbstractTopology {
 	                .withInsertQuery("insert ignore into user_persona(userKey,hierarchyId,phaseId,personaId,status,createdOn,modifiedOn) "
 	                		+ "values (?,?,?,?,'pending',now(),now()) on duplicate key update revision=revision+1");//属性表唯一校验规则：userKey、hierarchyId、phaseId、personaId
 
+            //2.2.8，建立对应该用的Filter创建任务
+            List<Column> columns4 = Lists.newArrayList(
+            		new Column("_key", Types.VARCHAR));
+            JdbcMapper jdbcMapper4 = new SimpleJdbcMapper(columns4);
+            JdbcInsertBolt jdbcInsertFilterBolt = new JdbcInsertBolt(analyzeConnectionProvider, jdbcMapper4)
+                    .withInsertQuery("insert ignore into user_filter(userKey,status,revision,createdOn,modifiedOn) "
+                    		+ "values (?,'pending',1,now(),now())");  
+ 	        
+	        
             //构建Topology
             String spout = "load_user_spout_load_from_harvest_arango";
             String saveToArangoBolt = "load_user_bolt_save_to_analyze_arango";
@@ -134,8 +148,10 @@ public class Load extends AbstractTopology {
             String insertValueBolt = "load_user_bolt_insert_value";
             String createMeasureTasksBolt = "load_user_bolt_create_measure_tasks";
             String createEvaluateTasksBolt = "load_user_bolt_create_evaluate_tasks";
+            String createUserQueryItemsBolt = "load_user_bolt_create_user_query_items";
             String findPersonaBolt = "load_user_bolt_find_all_persona";
             String createPersonaTasksBolt = "load_user_bolt_create_persona_tasks";
+            String insertFilterBolt = "load_user_bolt_insert_filter";
 	        TopologyBuilder builder = new TopologyBuilder();
 	        builder.setSpout(spout, arangoSpout, 1);
 	        builder.setBolt(saveToArangoBolt, insertBolt, 1).shuffleGrouping(spout);
@@ -146,6 +162,8 @@ public class Load extends AbstractTopology {
 	        builder.setBolt(insertValueBolt, jdbcInsertValueBolt, 5).shuffleGrouping(parseBolt);
 	        builder.setBolt(createMeasureTasksBolt, createMeasureTaskBolt, 1).shuffleGrouping(spout);
 	        builder.setBolt(createEvaluateTasksBolt, createEvaluateTaskBolt, 1).shuffleGrouping(spout);
+	        builder.setBolt(createUserQueryItemsBolt, createQueryItemBolt, 1).shuffleGrouping(spout);
+	        builder.setBolt(insertFilterBolt, jdbcInsertFilterBolt, 1).shuffleGrouping(spout);
 	        return builder.createTopology();
 	    }
 }

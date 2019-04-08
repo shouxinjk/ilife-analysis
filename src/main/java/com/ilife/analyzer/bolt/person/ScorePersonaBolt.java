@@ -80,7 +80,7 @@ public class ScorePersonaBolt extends AbstractArangoBolt {
 
         this.jdbcClientBiz = new JdbcClient(connectionProviderBiz, queryTimeoutSecs);
         this.jdbcClientAnalyze = new JdbcClient(connectionProviderAnalyze, queryTimeoutSecs);
-        
+        super.prepare(map, topologyContext, collector);
     }
 
     public void execute(Tuple tuple) {

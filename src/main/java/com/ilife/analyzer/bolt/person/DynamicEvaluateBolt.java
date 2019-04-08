@@ -56,7 +56,7 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
     protected ConnectionProvider connectionProviderBiz;
     protected ConnectionProvider connectionProviderAnalyze;
     
-    String[] inputFields = {"userKey","evaluation","type","script","persona","featured","userKey2","evaluation2"};//输入字段包含itemkey和persona，其中isFeature用于判定是否需要同步到ArangoDB
+    String[] inputFields = {"userKey","evaluation","type","category","script","persona","featured","userKey2","evaluation2"};//输入字段包含itemkey和persona，其中isFeature用于判定是否需要同步到ArangoDB
     String[] outfields = inputFields;//将数据继续传递
     
     public DynamicEvaluateBolt(Properties prop,String database,String collection,ConnectionProvider connectionProviderBiz,ConnectionProvider connectionProviderAnalyze) {
@@ -76,7 +76,6 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
 
         this.jdbcClientBiz = new JdbcClient(connectionProviderBiz, queryTimeoutSecs);
         this.jdbcClientAnalyze = new JdbcClient(connectionProviderAnalyze, queryTimeoutSecs);
-        
     }
 
     /**
@@ -160,7 +159,7 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
 	        jdbcClientAnalyze.executeSql(sqlUpdate); 	       
 	        //4，同步到Arango
 	        if(tuple.getBooleanByField("featured"))  {
-	        		syncText(tuple.getValueByField("_key").toString(),tuple.getValueByField("type").toString(),personaId);
+	        		syncText(tuple.getValueByField("_key").toString(),tuple.getValueByField("category").toString(),tuple.getValueByField("type").toString(),personaId);
 	        }
 	    }else {//could not happend. 如果没有对应的值：do nothing
 	    		logger.debug("Failed to evaluate satisfication.");
@@ -197,7 +196,7 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
 	       
 	        //4，同步到Arango
 	        if(tuple.getBooleanByField("featured"))  {
-	        		syncText(tuple.getValueByField("_key").toString(),tuple.getValueByField("type").toString(),sb.toString());
+	        		syncText(tuple.getValueByField("_key").toString(),tuple.getValueByField("category").toString(),tuple.getValueByField("type").toString(),sb.toString());
 	        }
 	    }else {//could not happend. 如果没有对应的值：do nothing
 	    		logger.debug("Failed to evaluate satisfication.");
@@ -234,7 +233,7 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
 	        
 	        //4，同步到Arango
 	        if(tuple.getBooleanByField("featured"))  {
-	        		syncText(tuple.getValueByField("_key").toString(),tuple.getValueByField("type").toString(),sb.toString());
+	        		syncText(tuple.getValueByField("_key").toString(),tuple.getValueByField("category").toString(),tuple.getValueByField("type").toString(),sb.toString());
 	        }	        
 	    }else {//could not happend. 如果没有对应的值：do nothing
 	    		logger.debug("Failed to evaluate satisfication.");
@@ -268,7 +267,7 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
 	        jdbcClientAnalyze.executeSql(sqlUpdate); 
 	        //3，同步到Arango
 	        if(tuple.getBooleanByField("featured"))  {
-	        		syncScore(tuple.getValueByField("_key").toString(),tuple.getValueByField("type").toString(),Double.parseDouble(row.get(1).getVal().toString()));
+	        		syncScore(tuple.getValueByField("_key").toString(),tuple.getValueByField("category").toString(),tuple.getValueByField("type").toString(),Double.parseDouble(row.get(1).getVal().toString()));
 	        }	        
 	    }else {//could not happend. 如果没有对应的值：do nothing
 	    		logger.debug("Failed to weighted-sum evaluation-measure score");
@@ -311,7 +310,7 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
 	        
 	        //4，同步到Arango
 	        if(tuple.getBooleanByField("featured"))  {
-	        		syncText(tuple.getValueByField("_key").toString(),tuple.getValueByField("type").toString(),value.toString());
+	        		syncText(tuple.getValueByField("_key").toString(),tuple.getValueByField("category").toString(),tuple.getValueByField("type").toString(),value.toString());
 	        }
 	    }else {//如果没有对应的值：do nothing
 	    		logger.debug("Cannot find item values");
@@ -319,7 +318,7 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
     }
 
 
-    private void syncScore(String userKey,String type, double score) {
+    private void syncScore(String userKey,String category,String type, double score) {
     		//执行数据更新
 		BaseDocument doc = new BaseDocument();
 		doc.setKey(userKey);
@@ -329,9 +328,12 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
 		doc.getProperties().put("evaluate", evaluate);
 		doc.getProperties().put("status", "pending");//更改状态再次索引
 		arangoClient.update(collection, doc.getKey(), doc);    	
+		
+		//更新user query
+		syncUserQuery(userKey,category,type,""+score);
     }
     
-    private void syncText(String userKey,String type, String text) {
+    private void syncText(String userKey,String category,String type, String text) {
 		//执行数据更新
 		BaseDocument doc = new BaseDocument();
 		doc.setKey(userKey);
@@ -342,6 +344,34 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
 		doc.getProperties().put("status", "pending");//更改状态再次索引
 		
 		arangoClient.update(collection, doc.getKey(), doc);    	
+		
+		//更新user query
+		syncUserQuery(userKey,category,type,text);
+	}
+    
+    private void syncUserQuery(String userKey,String category,String type, String text) {
+    		if(category == null ||category.trim().length()==0 ||type==null|| type.trim().length()==0 || text==null || text.trim().length()==0) {
+    			logger.debug("user_query has empty value. skip.");
+    		}else {
+	    		//对type需要进行预处理，对于采用::分隔的需要分解为subtype::field
+	    		String[] fields = type.split("::");
+	    		String subType = "-";
+	    		String field = type;
+	    		if(fields.length>1) {
+	    			subType = fields[0];
+	    			field = fields[1];
+	    		}
+			//更新用户Query/Filter
+			String sqlUpdate = "update user_query set text='_TEXT',status='ready',revision=revision+1,modifiedOn=now() where category='_CATEGORY' and subType='_SUBTYPE' and field='_FIELD' and userKey='_USERKEY'"
+		    		.replace("_TEXT", text)
+		    		.replace("_CATEGORY", category)
+		    		//.replace("_TYPE", "match")
+		    		.replace("_SUBTYPE", subType)
+		    		.replace("_FIELD", field)
+		    		.replace("_USERKEY", userKey);
+			logger.debug("try to update user_query.[SQL]"+sqlUpdate);
+			jdbcClientAnalyze.executeSql(sqlUpdate);  
+    		}
 	}
 
     @Override
