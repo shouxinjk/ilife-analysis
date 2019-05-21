@@ -19,8 +19,13 @@ import com.ilife.analyzer.bolt.SampleBolt;
 import com.ilife.analyzer.topology.AbstractTopology;
 
 /**
- * 计算动机、诱因是否生效。
- * 诱因和动机均拥有触发条件如节日仅在指定日期或指定时间段，仅在触发后才生效。
+ * 仅计算制定Demand或Occasion是否生效。包括两部分：
+ * 
+ * Person：根据person profile及时间进行，将不生效的状态进行更新
+ * Stuff：根据stuff profile及时间进行，将不生效的状态进行更新
+ * 
+ * 待定：由于当前单个商品或persona未直接关联到demands或occasion，不能做到基于单个实例评价
+ * 
  * @author alexchew
  *
  */

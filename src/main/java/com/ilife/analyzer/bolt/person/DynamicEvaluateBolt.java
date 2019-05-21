@@ -81,10 +81,11 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
     /**
      * 根据类型分别执行不同的算法。
      * perform：默认执行weigted-sum，查询关联evaluate-measure并加权汇总，更新score
-     * cost：默认执行weigted-sum，查询关联evaluate-measure并加权汇总，更新score
+     * cost(economy/culture/society)：默认执行weigted-sum，查询关联evaluate-measure并加权汇总，更新score
      * constraint：默认执行script，查询item后执行groovy脚本，更新text
-     * satisify：默认执行system算法，查询对应persona关联需求满足，转换为tag列表后更新text
-     * context：默认执行system算法，查询对应persona关联的诱因，转换为tag列表后更新text
+     * demands：默认执行system算法，查询对应persona关联需求满足，转换为tag列表后更新text
+     * occasions:默认执行system算法，查询对应persona关联的外部诱因，转换为tag列表后更新text
+     * context：默认执行script算法，转换为tag列表后更新text
      * style：默认执行script，查询item后执行groovy脚本，更新text
      * persona：默认执行system算法，选择得分匹配最高的更新text
      * hierarchy：不关注。通过EvaluatePersona Topology 完成
@@ -93,22 +94,22 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
     public void execute(Tuple tuple) {
     	 	String type = tuple.getStringByField("type");//获取type字段
     	 	//根据type分别处理
-    	 	if("perform".equalsIgnoreCase(type)) {
+    	 	if("perform".equalsIgnoreCase(type)) {//lifestyle:当前使用不存在的perform占位，实际上不会被调用，lifestyle评价通过persona完成
     	 		evaluateWeightedSumByScore(tuple);
-    	 	}else if("cost".equalsIgnoreCase(type)) {
+    	 	}else if("economy".equalsIgnoreCase(type)||"culture".equalsIgnoreCase(type)||"society".equalsIgnoreCase(type)) {//capability
     	 		evaluateWeightedSumByScore(tuple);
-    	 	}else if("constraint".equalsIgnoreCase(type)) {
-    	 		evaluateScriptByText(tuple);
-    	 	}else if("satisify".equalsIgnoreCase(type)) {
-    	 		evaluateSatisfyByText(tuple);
-    	 	}else if("context".equalsIgnoreCase(type)) {
-    	 		evaluateContextByText(tuple);
+    	 	}else if("demands".equalsIgnoreCase(type)) {//demands
+    	 		evaluateDemandsByText(tuple);
+    	 	}else if("occasion".equalsIgnoreCase(type)) {//occasion
+    	 		evaluateOccasionsByText(tuple);
     	 	}else if("style".equalsIgnoreCase(type)) {
-    	 		evaluateScriptByText(tuple);
+    	 		evaluateTagsByText(tuple);
     	 	}else if("persona".equalsIgnoreCase(type)) {
     	 		evaluatePersonaByText(tuple);
-    	 	}else {//hierarchy、phase通过EvaluatePersona拓扑完成，此处不做处理
+    	 	}else if("hierarchy".equalsIgnoreCase(type)||"phase".equalsIgnoreCase(type)){//hierarchy、phase通过EvaluatePersona拓扑完成，此处不做处理
     	 		logger.debug("Ingnore type.[type]"+type);
+    	 	}else{//其他自定义字段均通过 脚本 处理，包括constraint以及自定义属性如brand::tags
+    	 		evaluateScriptByText(tuple);
     	 	}
 
         //将userKey、persona向后传递
@@ -169,7 +170,7 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
     /**
      * 汇总需求满足度字符串     
      */
-    private void evaluateSatisfyByText(Tuple tuple) {
+    private void evaluateDemandsByText(Tuple tuple) {
 	    	//1，根据persona查询所有关联的motivation
 	    String sqlQuery = "select name from mod_motivation where id in (select motivation_ids from mod_life_style where persona_id=? limit 1)";
 	    logger.debug("try to query related motivations.[SQL]"+sqlQuery);
@@ -179,6 +180,7 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
 	    StringBuffer sb = new StringBuffer();
 	    if (result != null && result.size() != 0) {
             for (List<Column> row : result) {
+            	//TODO：需要根据触发规则进行判定，如果触发才加入列表
                 for(Column column : row) {
                     sb.append(column.getVal().toString());
                     sb.append(" ");
@@ -204,10 +206,10 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
     }   
 
     /**
-     * 汇总需求满足度字符串     
+     * 汇总外部诱因匹配字符串     
      */
-    private void evaluateContextByText(Tuple tuple) {
-	    	//1，根据persona查询所有关联的motivation
+    private void evaluateOccasionsByText(Tuple tuple) {
+	    	//1，根据persona查询所有关联的occasions
 	    String sqlQuery = "select name from mod_occasion where id in (select occasion_ids from mod_life_style where persona_id=? limit 1)";
 	    logger.debug("try to query related occasions.[SQL]"+sqlQuery);
 	    List<Column> queryParams=new ArrayList<Column>();
@@ -216,6 +218,7 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
 	    StringBuffer sb = new StringBuffer();
 	    if (result != null && result.size() != 0) {
             for (List<Column> row : result) {
+            	//TODO：需要根据是否生效判定
                 for(Column column : row) {
                     sb.append(column.getVal().toString());
                     sb.append(" ");
@@ -239,6 +242,17 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
 	    		logger.debug("Failed to evaluate satisfication.");
 	    }
     }   
+    
+    /**
+     * 汇总用户偏好标签
+     * 
+     * 根据用户行为统计关注的标签，并形成单一记录
+     * @param tuple
+     */
+    private void evaluateTagsByText(Tuple tuple) {
+    		//TODO
+    }
+    
     /**
      * 加权汇总计算得分
      * 适用于perform、cost      

@@ -81,30 +81,29 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
 
     /**
      * 根据类型分别执行不同的算法。
-     * perform：默认执行weigted-sum，查询关联evaluate-measure并加权汇总，更新score
-     * cost：默认执行weigted-sum，查询关联evaluate-measure并加权汇总，更新score
+     * perform：默认执行weigted-sum，查询关联evaluate-measure并加权汇总，更新score，包含abcde五个字段
+     * cost：默认执行weigted-sum，查询关联evaluate-measure并加权汇总，更新score，包含xyz三个字段
      * constraint：默认执行script，查询item后执行groovy脚本，更新text
      * satisify：默认执行system算法，查询对应category关联需求满足，转换为tag列表后更新text
      * context：默认执行system算法，查询对应category关联的诱因，转换为tag列表后更新text
      * style：默认执行script，查询item后执行groovy脚本，更新text
+     * tag：默认执行script，从用户行为等获取标签列表
      */
     public void execute(Tuple tuple) {
     	 	String type = tuple.getStringByField("type");//获取type字段
     	 	//根据type分别处理
-    	 	if("perform".equalsIgnoreCase(type)) {
+    	 	if("a".equalsIgnoreCase(type)||"b".equalsIgnoreCase(type)||"c".equalsIgnoreCase(type)||"d".equalsIgnoreCase(type)||"e".equalsIgnoreCase(type)) {//perform 包含的5个字段
     	 		evaluateWeightedSumByScore(tuple);
-    	 	}else if("cost".equalsIgnoreCase(type)) {
+    	 	}else if("x".equalsIgnoreCase(type)||"y".equalsIgnoreCase(type)||"z".equalsIgnoreCase(type)) {//cost 包含3个字段
     	 		evaluateWeightedSumByScore(tuple);
-    	 	}else if("constraint".equalsIgnoreCase(type)) {
-    	 		evaluateScriptByText(tuple);
     	 	}else if("satisify".equalsIgnoreCase(type)) {
     	 		evaluateSatisfyByText(tuple);
     	 	}else if("context".equalsIgnoreCase(type)) {
     	 		evaluateContextByText(tuple);
-    	 	}else if("style".equalsIgnoreCase(type)) {
+    	 	}else if("ignore".equalsIgnoreCase(type)||"do-not-care".equalsIgnoreCase(type)) {//ignore：表示不需要处理的字段
+    	 		logger.debug("Ignore type.[type]"+type);
+    	 	}else {//否则均通过脚本进行处理，包括style、constraint、tags等
     	 		evaluateScriptByText(tuple);
-    	 	}else {
-    	 		logger.debug("Unkown type.[type]"+type);
     	 	}
 
         //将itemKey、category向后传递
@@ -277,9 +276,10 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
 		BaseDocument doc = new BaseDocument();
 		doc.setKey(itemKey);
 
-		Map<String,Object> evaluate = new HashMap<String,Object>();
-		evaluate.put(type, score);
-		doc.getProperties().put("evaluate", evaluate);
+		//Map<String,Object> evaluate = new HashMap<String,Object>();
+		//evaluate.put(type, score);
+		//doc.getProperties().put("evaluate", evaluate);
+		doc.getProperties().put(type, score);//直接写入属性
 		doc.getProperties().put("status", "pending");//更改状态再次索引
 		arangoClient.update(collection, doc.getKey(), doc);    	
     }
@@ -289,9 +289,10 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
 		BaseDocument doc = new BaseDocument();
 		doc.setKey(itemKey);
 	
-		Map<String,Object> evaluate = new HashMap<String,Object>();
-		evaluate.put(type, text);
-		doc.getProperties().put("evaluate", evaluate);
+		//Map<String,Object> evaluate = new HashMap<String,Object>();
+		//evaluate.put(type, text);
+		//doc.getProperties().put("evaluate", evaluate);
+		doc.getProperties().put(type, text);//直接写入属性
 		doc.getProperties().put("status", "pending");//更改状态再次索引
 		
 		arangoClient.update(collection, doc.getKey(), doc);    	
