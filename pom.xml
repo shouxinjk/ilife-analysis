@@ -37,11 +37,11 @@
 		<artifactId>mysql-connector-java</artifactId>
 		<version>5.1.38</version>
 	</dependency>	
-	<dependency>
+	<!--dependency>
 	  <groupId>com.arangodb</groupId>
 	  <artifactId>arangodb-java-driver</artifactId>
 	  <version>4.2.2</version>
-	</dependency>	
+	</dependency-->	
     <dependency>
         <groupId>junit</groupId>
         <artifactId>junit</artifactId>
