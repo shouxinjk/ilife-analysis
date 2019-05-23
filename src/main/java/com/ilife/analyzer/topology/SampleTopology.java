@@ -32,7 +32,7 @@ public class SampleTopology extends AbstractTopology {
 	    @Override
 	    public StormTopology getTopology() {
 	    		//1，ArangoSpout：从Arangodb读取数据
-	    		String query = "FOR doc in my_stuff_test filter doc.test=='咪咪超级大啊' limit 50 return doc";
+	    		String query = "FOR doc in my_stuff_test filter doc.test=='咪咪' limit 50 return doc";
 	    		String[] fields = {"_key","source","title","_doc"};
 	    		ArangoSpout arangoSpout = new ArangoSpout(props,database)
 	    				.withQuery(query).withFields(fields);
