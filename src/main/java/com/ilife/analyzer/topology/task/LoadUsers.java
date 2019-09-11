@@ -1,4 +1,4 @@
-package com.ilife.analyzer.topology.stuff;
+package com.ilife.analyzer.topology.task;
 
 import java.sql.Types;
 import java.util.List;
@@ -23,59 +23,59 @@ import org.apache.storm.jdbc.mapper.JdbcLookupMapper;
 import org.apache.storm.jdbc.mapper.JdbcMapper;
 import org.apache.storm.jdbc.mapper.SimpleJdbcLookupMapper;
 import org.apache.storm.jdbc.mapper.SimpleJdbcMapper;
-import org.apache.storm.kafka.bolt.KafkaBolt;
-import org.apache.storm.kafka.bolt.mapper.FieldNameBasedTupleToKafkaMapper;
-import org.apache.storm.kafka.bolt.selector.DefaultTopicSelector;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
 
 import com.google.common.collect.Lists;
 import com.ilife.analyzer.bolt.JsonParseBolt;
-import com.ilife.analyzer.bolt.stuff.ComposeKafkaMessageBolt;
+import com.ilife.analyzer.bolt.stuff.CreateEvaluateTaskBolt;
 import com.ilife.analyzer.bolt.stuff.CreateMeasureTaskBolt;
 import com.ilife.analyzer.topology.AbstractTopology;
 
 /**
  * @author alexchew
- * 提交索引： 按照索引状态进行更新。如果指定记录的索引状态为pending，则提交索引
- * 
- * 1，读取分析库中索引状态为pending的记录
- * 2，提交内容到索引库
+ * 加载用户数据并完成个性化查询，得到候选列表
+ * 1，从arangodb获取 status=pending 或 status=ready && recommend=false 状态用户数据，包括id、filter
+ * 2，将用户数据写入分析库，建立自动推荐任务，默认状态为pending
+ * 3，
+ * 拓扑图：
+ * Arango用户
+ *        \--构建自动推荐任务-----写入推荐任务库（userId、tags、lastModified、lastCalculated、status）
+ *                           
  */
-public class Index extends AbstractTopology {
+public class LoadUsers extends AbstractTopology {
 	    String arango_harvest = "sea";//采集库，存放原始采集数据
 	    String arango_analyze = "forge";//分析库，存放分析结果
 	    
 	    public static void main(String[] args) throws Exception {
-	        new Index().execute(args);
+	        new LoadUsers().execute(args);
 	    }
 
 	    @Override
 	    public StormTopology getTopology() {
 	    		//1，ArangoSpout：从arangodb读取状态为pending的初始数据，读取后即更新状态为ready
-	    		String query = "FOR doc in my_stuff filter doc.index ==null or doc.index == \"pending\" update doc with { index: \"ready\" } in my_stuff limit 10 return OLD";
-	    		//String[] fields = {"type","source","category","tagging","distributor","title","tags","summary","price","images","rank","link","props"};
-	    		String[] fields = {"_doc"};
+	    		String query = "FOR doc in user_users filter doc.isRecommend == null or doc.status='pending' update doc with { isRecommend: true } in user_users limit 10 return OLD";
+	    		String[] fields = {"_key","query","tags"};//query是个性化查询
 	    		ArangoSpout arangoSpout = new ArangoSpout(props,arango_harvest)
-	    				.withQuery(query).withFields(fields);
+	    				.withQuery(query)
+	    				.withFields(fields);
 	    		
-	    		//2，将doc组织为message
-	    		ComposeKafkaMessageBolt msgBolt = new ComposeKafkaMessageBolt();
-	    		
-	    		//3，KafkaBolt：内容提交到索引库 //TODO: 当前将所有内容放在_doc字段，需要进行区分
-	    		KafkaBolt kafkaBolt = new KafkaBolt()
-	    		        .withProducerProperties(props)
-	    		        .withTopicSelector(new DefaultTopicSelector("stuff"))
-	    		        .withTupleToKafkaMapper(new FieldNameBasedTupleToKafkaMapper());
-            
+	    		//2.1，写入待推荐用户表
+            List<Column> columns = Lists.newArrayList(
+            		new Column("userId", Types.VARCHAR),
+            		new Column("query", Types.VARCHAR),
+            		new Column("tags", Types.VARCHAR));
+            JdbcMapper jdbcMapper = new SimpleJdbcMapper(columns);
+            JdbcInsertBolt jdbcInsertRecommdationTaskBolt = new JdbcInsertBolt(analyzeConnectionProvider, jdbcMapper)
+                    .withInsertQuery("insert ignore into recommendationTask(id,query,type,tags,status,modifiedOn,ProcessedOn) "
+                    		+ "values (?,?,'user',?,'pending',now(),now()) on duplicate key update revision=revision+1");//属性表唯一校验规则：type、userId
+
             //构建Topology
-            String nameSpout = "index_spout_load_doc";
-            String nameKafkaMsgBolt = "index_kafka_msg_bolt";
-            String nameKafkaBolt = "index_kafka_bolt";
+            String spout = "loadusers_spout_load_from_harvest_arango";
+            String insertTaskBolt = "loadusers_bolt_insert_tasks";
 	        TopologyBuilder builder = new TopologyBuilder();
-	        builder.setSpout(nameSpout, arangoSpout, 1);
-	        builder.setBolt(nameKafkaMsgBolt, msgBolt, 1).shuffleGrouping(nameSpout);
-	        builder.setBolt(nameKafkaBolt, kafkaBolt, 1).shuffleGrouping(nameKafkaMsgBolt);
+	        builder.setSpout(spout, arangoSpout, 1);
+	        builder.setBolt(insertTaskBolt, jdbcInsertRecommdationTaskBolt, 5).shuffleGrouping(spout);
 	        return builder.createTopology();
 	    }
 }

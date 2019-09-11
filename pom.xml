@@ -64,12 +64,17 @@
 	    <artifactId>arangodb-java-driver</artifactId>
 	    <version>4.7.0</version>
 	</dependency>
+	<!-- https://mvnrepository.com/artifact/org.apache.storm/storm-kafka -->
+	<dependency>
+	    <groupId>org.apache.storm</groupId>
+	    <artifactId>storm-kafka</artifactId>
+	    <version>1.2.2</version>
+	</dependency>
 	<!-- https://mvnrepository.com/artifact/org.apache.storm/storm-kafka-client -->
 	<dependency>
 	    <groupId>org.apache.storm</groupId>
 	    <artifactId>storm-kafka-client</artifactId>
 	    <version>1.2.2</version>
-	    <scope>provided</scope>
 	</dependency>
 	<dependency>
 	  <groupId>com.google.code.gson</groupId>
