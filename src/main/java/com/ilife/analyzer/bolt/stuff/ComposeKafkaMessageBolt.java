@@ -20,7 +20,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.gson.Gson;
-import com.ilife.analyzer.serializer.Stuff;
 import com.ilife.analyzer.util.BeanUtil;
 
 import java.sql.Types;
