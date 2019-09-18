@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Stuff {
+	String _key;
 	String title;
 	String summary;
 	String tagging;
@@ -98,5 +99,11 @@ public class Stuff {
 	}
 	public void setLink(Link link) {
 		this.link = link;
+	}
+	public String get_key() {
+		return _key;
+	}
+	public void set_key(String _key) {
+		this._key = _key;
 	}
 }

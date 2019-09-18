@@ -46,19 +46,27 @@ public class ComposeKafkaMessageBolt extends BaseRichBolt {
 		this.outfields = outputFields;
 }
     public void execute(Tuple tuple) {
-    		Stuff stuff = new Stuff();
+    		//Stuff stuff = new Stuff();
+    		HashMap map = (HashMap)tuple.getValueByField("_doc");
+    		map.put("_key", tuple.getValueByField("_key"));//将_key加入作为唯一识别码
+    		if(map.get("tagging")==null) {//自动索引情况下添加tagging
+    			map.put("tagging", map.get("title"));//TODO 需要使用自动摘要得到
+    		}
+    		logger.error("try to compose kafka msg."+map);
+    		/**
 	    	try {
-	    		logger.debug("try to compose kafka msg.",tuple.getValueByField("_doc"));
-	    		stuff = (Stuff) BeanUtil.mapToBean((HashMap)(tuple.getValueByField("_doc")), Stuff.class);
+	    		logger.error("try to compose kafka msg."+map);
+	    		stuff = (Stuff) BeanUtil.mapToBean(map, Stuff.class);
 	    	}catch(Exception ex) {
 	    		logger.error("error while convert doc to kafka msg.",ex);
 	    	}
+	    	//**/
     		try {
 	    		Values values = new Values();
 	    		for(String field:outfields) {
-	    			if("message".equalsIgnoreCase(field))
-	    				values.add(stuff);
-	    			else
+	    			if("message".equalsIgnoreCase(field)) {
+	    				values.add(map);
+	    			}else
 	    				values.add(tuple.getValueByField(field));
 	    		}
 	    		this.collector.emit(values);

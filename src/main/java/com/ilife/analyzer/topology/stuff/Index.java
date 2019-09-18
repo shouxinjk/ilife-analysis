@@ -53,9 +53,9 @@ public class Index extends AbstractTopology {
 	    @Override
 	    public StormTopology getTopology() {
 	    		//1，ArangoSpout：从arangodb读取状态为pending的初始数据，读取后即更新状态为ready
-	    		String query = "FOR doc in my_stuff filter doc.index ==null or doc.index == \"pending\" update doc with { index: \"ready\" } in my_stuff limit 10 return OLD";
+	    		String query = "FOR doc in my_stuff filter doc.index ==null or doc.index == \"pending\" update doc with { index: \"ready\" } in my_stuff limit 10 return NEW";
 	    		//String[] fields = {"type","source","category","tagging","distributor","title","tags","summary","price","images","rank","link","props"};
-	    		String[] fields = {"_doc"};
+	    		String[] fields = {"_key","_doc"};
 	    		ArangoSpout arangoSpout = new ArangoSpout(props,arango_harvest)
 	    				.withQuery(query).withFields(fields);
 	    		
@@ -65,7 +65,7 @@ public class Index extends AbstractTopology {
 	    		//3，KafkaBolt：内容提交到索引库 //TODO: 当前将所有内容放在_doc字段，需要进行区分
 	    		KafkaBolt kafkaBolt = new KafkaBolt()
 	    		        .withProducerProperties(props)
-	    		        .withTopicSelector(new DefaultTopicSelector("stuff"))
+	    		        .withTopicSelector(new DefaultTopicSelector("stuff"))//TODO should be configurable
 	    		        .withTupleToKafkaMapper(new FieldNameBasedTupleToKafkaMapper());
             
             //构建Topology
