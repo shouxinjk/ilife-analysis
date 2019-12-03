@@ -153,6 +153,7 @@ public class ClearingBolt extends AbstractArangoBolt {
 
                if("team".equalsIgnoreCase(beneficiaryType)) { 
             	   		status = "pending";//需要二次清分
+            	   		person = beneficiary;//对于团队绩效，直接使用团队标记
                }else {
             	   		person = brokers.get(beneficiary)==null?brokers.get("broker"):brokers.get(beneficiary);//使用真实的ID填充
                }
