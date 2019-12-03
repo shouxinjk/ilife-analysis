@@ -66,7 +66,7 @@ public class OrderSpout extends BaseRichSpout implements IRichSpout {
 
     public void nextTuple() {
     		//从业务库查询待处理订单列表
-        String sql = "select a.id,a.item,a.amount,a.order_time,a.platform,a.trace_code,a.commission_settlement as commission,b.id as broker_id from mod_order a LEFT JOIN mod_trace_code b ON a.trace_code = b.code and a.platform=b.platform where a.status='pending' limit 10";
+        String sql = "select a.id,a.item,a.amount,a.order_time,a.platform,a.trace_code,a.commission_settlement as commission,b.broker_id as broker_id from mod_order a LEFT JOIN mod_trace_code b ON a.trace_code = b.code and a.platform=b.platform where a.status='pending' limit 10";
         logger.debug("try to query pending orders.[SQL]"+sql);
         List<List<Column>> result = jdbcClient.select(sql,queryParams);
         if (result != null && result.size() != 0) {//如果有则直接发射

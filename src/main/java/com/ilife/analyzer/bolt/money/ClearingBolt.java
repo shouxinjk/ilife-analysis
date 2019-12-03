@@ -151,12 +151,16 @@ public class ClearingBolt extends AbstractArangoBolt {
                DecimalFormat df = new DecimalFormat("#.00");//保留两位小数
                String amountStr = df.format(amount);
 
-               if("team".equalsIgnoreCase(beneficiaryType)) { 
+               if("team".equalsIgnoreCase(beneficiaryType)) { //beneficiaryType==team
             	   		status = "pending";//需要二次清分
             	   		person = beneficiary;//对于团队绩效，直接使用团队标记
-               }else {
-            	   		person = brokers.get(beneficiary)==null?brokers.get("broker"):brokers.get(beneficiary);//使用真实的ID填充
-               }
+               }else{//beneficiaryType==person
+	            	   if("platform".equalsIgnoreCase(beneficiary)) { //如果是平台收入，则作为特殊情况处理
+	            		   person = "platform";//直接使用平台标记：是一个特殊的达人账户
+	               }else{//具体个人分润：推广达人、上级、上上级
+	            	   		person = brokers.get(beneficiary)==null?"null-"+beneficiary:brokers.get(beneficiary);//使用真实的ID填充
+	               }
+            }
                
 	             //2,写入清分记录
 	               //采用order_id+scheme_id+scheme_item_id+beneficiary+beneficiary_type作为id
@@ -203,31 +207,34 @@ public class ClearingBolt extends AbstractArangoBolt {
     private Map<String,String> getBrokers(String broker_id) {
     		Map<String,String> brokers = new HashMap<String,String>();
     		brokers.put("broker", broker_id);
-    		brokers.put("parent", broker_id);
-    		brokers.put("grandpa", broker_id);
 	    	//1，查询上级达人
+	    String parent_id = getParentBroker(broker_id);
+	    brokers.put("parent", parent_id);
+	    	//2，查询上上级达人
+	    String grandpa_id = getParentBroker(parent_id);
+	    brokers.put("grandpa", grandpa_id);
+	    
+	    logger.error("\n\n====broker list====\n\n",brokers);
+	    
+	    return brokers;
+    }   
+    
+    private String getParentBroker(String broker_id) {
 	    String sqlQuery = "select parent_id from mod_broker where id=? limit 1";
 	    logger.debug("try to query parent broker.[SQL]"+sqlQuery);
 	    List<Column> queryParams=new ArrayList<Column>();
 	    queryParams.add(new Column("id",broker_id,Types.VARCHAR));
 	    List<List<Column>> result = jdbcClientBiz.select(sqlQuery,queryParams);
-	    if (result != null && result.size() != 0) {
-            String parent_id = result.get(0).get(0).getVal().toString();//上级达人ID
-            brokers.put("parent", parent_id);
-            brokers.put("grandpa", parent_id);
-	        //2，查询上上级达人
-            List<Column> queryParams2=new ArrayList<Column>();
-            queryParams2.add(new Column("id",parent_id,Types.VARCHAR));
-	    	    List<List<Column>> result2 = jdbcClientBiz.select(sqlQuery,queryParams2);
-	    	    if (result2 != null && result2.size() != 0) {
-	                String grandpa_id = result2.get(0).get(0).getVal().toString();//上上级达人ID
-	                brokers.put("grandpa", grandpa_id);
-	    	    }
-	    }else {
+	    if (result != null && result.size() > 0) {
+	        String parent_id = result.get(0).get(0).getVal().toString();//上级达人ID
+	        if(parent_id == null || parent_id.trim().length()==0)
+	        		return broker_id;//如果parent 为空则返回达人自己
+	        return parent_id;
+	    }else {//如果没有上级达人则返回自己
 	    		logger.debug("has no parent broker.");
+	    		return broker_id;
 	    }
-	    return brokers;
-    }   
+    }
     
     private void syncText(String itemKey,String type, String text) {
 		//执行数据更新
