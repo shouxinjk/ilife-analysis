@@ -33,7 +33,9 @@ import groovy.lang.GroovyShell;
 
 import java.sql.Types;
 import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -116,7 +118,7 @@ public class ClearingBolt extends AbstractArangoBolt {
 	    List<Column> queryParams=new ArrayList<Column>();
 	    queryParams.add(new Column("platform",tuple.getValueByField("platform"),Types.VARCHAR));
 	    List<List<Column>> result = jdbcClientBiz.select(sqlQuery,queryParams);
-	    StringBuffer sb = new StringBuffer();
+	    SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
 	    if (result != null && result.size() != 0) {
 	    		//逐条产生清分记录
             for (List<Column> row : result) {
@@ -177,9 +179,11 @@ public class ClearingBolt extends AbstractArangoBolt {
                
 	             //2,写入清分记录
 	               //采用order_id+scheme_id+scheme_item_id+beneficiary+beneficiary_type作为id
+               
+               	String timeStr = formatter.format(new Date());
 				String idStr = tuple.getValueByField("id").toString()+profit_scheme_id+profit_item_id+beneficiaryType+beneficiary+person;
-				String sqlUpdate = "insert into mod_clearing(id,platform,order_id,order_time,item,amount_order,amount_commission,amount_profit,scheme_id,scheme_item_id,beneficiary,beneficiary_type,share,status_clear) "
-						+ "values('__id','_platform','_order_id','_order_time','__item','_amount_order','_amount_commission','_amount_profit','_scheme_id','_scheme_item_id','__beneficiary','_beneficiary_type','_share','_status')"
+				String sqlUpdate = "insert into mod_clearing(id,platform,order_id,order_time,item,amount_order,amount_commission,amount_profit,scheme_id,scheme_item_id,beneficiary,beneficiary_type,share,status_clear,create_date,update_date) "
+						+ "values('__id','_platform','_order_id','_order_time','__item','_amount_order','_amount_commission','_amount_profit','_scheme_id','_scheme_item_id','__beneficiary','_beneficiary_type','_share','_status','_create_date','_update_date')"
 					.replace("__id",Util.md5(idStr) )//动态构建md5作为id
 					.replace("_platform", tuple.getStringByField("platform"))
 					.replace("_order_id", tuple.getStringByField("id"))
@@ -193,7 +197,9 @@ public class ClearingBolt extends AbstractArangoBolt {
 					.replace("_share", shareStr)
 					.replace("__beneficiary", person)
 					.replace("_beneficiary_type", beneficiaryType)
-					.replace("_status", status);
+					.replace("_status", status)
+					.replace("_create_date", timeStr)
+					.replace("_update_date", timeStr);
 				logger.debug("try to insert clearing record.[SQL]"+sqlUpdate);
 				jdbcClientBiz.executeSql(sqlUpdate); 
             }
