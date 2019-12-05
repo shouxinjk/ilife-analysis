@@ -125,6 +125,7 @@ public class ClearingBolt extends AbstractArangoBolt {
                String profit_scheme_id = "";
                String profit_item_id = "";
                double share = 0;
+               String shareStr = "0";
                for(Column column : row) {//获取分润详细设置
                    if("beneficiary".equalsIgnoreCase(column.getColumnName())) {
                 	   		beneficiary = column.getVal().toString();
@@ -132,7 +133,8 @@ public class ClearingBolt extends AbstractArangoBolt {
                 	   	beneficiaryType = column.getVal().toString();
                    }else if("share".equalsIgnoreCase(column.getColumnName())) {
 	                	   try {
-			      	   		share = Double.parseDouble(column.getVal().toString());
+	                		    shareStr = column.getVal().toString();
+			      	   		share = Double.parseDouble(shareStr);
 	                	   }catch(Exception ex) {
 	                		   logger.error("\n======failed to parse share.=======\n",ex);
 	                		   share = 0;
@@ -145,7 +147,7 @@ public class ClearingBolt extends AbstractArangoBolt {
                }
                
                //开始计算
-               String status = "done";
+               String status = "cleared";
                String person = brokers.get("broker");//默认为当前broker
                double amount = share * tuple.getDoubleByField("commission")/100;
                DecimalFormat df = new DecimalFormat("#.00");//保留两位小数
@@ -159,14 +161,25 @@ public class ClearingBolt extends AbstractArangoBolt {
 	            		   person = "platform";//直接使用平台标记：是一个特殊的达人账户
 	               }else{//具体个人分润：推广达人、上级、上上级
 	            	   		person = brokers.get(beneficiary)==null?"null-"+beneficiary:brokers.get(beneficiary);//使用真实的ID填充
+	            	   		//对上级、上上级检查是否已经达标，否则设置为锁定状态
+	            	   		if("parent".equalsIgnoreCase(beneficiary) ||"grandpa".equalsIgnoreCase(beneficiary)) {
+		            	   		String childBrokerCount = brokers.get("child_"+person);
+		            	   		if(childBrokerCount==null)//没有下级达人则设置为锁定
+		            	   			status = "locked";
+		            	   		else {//检查是否已经达标
+		            	   			int childCount = Integer.parseInt(childBrokerCount);
+		            	   			if(childCount<15)//硬编码：检查是否达到15个下级达人
+		            	   				status = "locked";
+		            	   		}
+	            	   		}
 	               }
             }
                
 	             //2,写入清分记录
 	               //采用order_id+scheme_id+scheme_item_id+beneficiary+beneficiary_type作为id
 				String idStr = tuple.getValueByField("id").toString()+profit_scheme_id+profit_item_id+beneficiaryType+beneficiary+person;
-				String sqlUpdate = "insert into mod_clearing(id,platform,order_id,order_time,item,amount_order,amount_commission,amount_profit,scheme_id,scheme_item_id,beneficiary,beneficiary_type,status) "
-						+ "values('__id','_platform','_order_id','_order_time','__item','_amount_order','_amount_commission','_amount_profit','_scheme_id','_scheme_item_id','__beneficiary','_beneficiary_type','_status')"
+				String sqlUpdate = "insert into mod_clearing(id,platform,order_id,order_time,item,amount_order,amount_commission,amount_profit,scheme_id,scheme_item_id,beneficiary,beneficiary_type,share,status_clear) "
+						+ "values('__id','_platform','_order_id','_order_time','__item','_amount_order','_amount_commission','_amount_profit','_scheme_id','_scheme_item_id','__beneficiary','_beneficiary_type','_share','_status')"
 					.replace("__id",Util.md5(idStr) )//动态构建md5作为id
 					.replace("_platform", tuple.getStringByField("platform"))
 					.replace("_order_id", tuple.getStringByField("id"))
@@ -177,6 +190,7 @@ public class ClearingBolt extends AbstractArangoBolt {
 					.replace("_amount_profit", amountStr)
 					.replace("_scheme_id", profit_scheme_id)
 					.replace("_scheme_item_id", profit_item_id)
+					.replace("_share", shareStr)
 					.replace("__beneficiary", person)
 					.replace("_beneficiary_type", beneficiaryType)
 					.replace("_status", status);
@@ -207,18 +221,23 @@ public class ClearingBolt extends AbstractArangoBolt {
     private Map<String,String> getBrokers(String broker_id) {
     		Map<String,String> brokers = new HashMap<String,String>();
     		brokers.put("broker", broker_id);
+    		brokers.put("child_"+broker_id, ""+getChildBrokerCount(broker_id));//获取该达人下级达人数。用于设置是否锁定上级、上上级佣金
 	    	//1，查询上级达人
 	    String parent_id = getParentBroker(broker_id);
 	    brokers.put("parent", parent_id);
+	    if(brokers.get("child_"+parent_id)==null) {//获取该达人下级达人数。用于设置是否锁定上级、上上级佣金
+	    		brokers.put("child_"+parent_id, ""+getChildBrokerCount(parent_id));
+	    }
 	    	//2，查询上上级达人
 	    String grandpa_id = getParentBroker(parent_id);
 	    brokers.put("grandpa", grandpa_id);
-	    
-	    logger.error("\n\n====broker list====\n\n",brokers);
-	    
+	    if(brokers.get("child_"+grandpa_id)==null) {//获取该达人下级达人数。用于设置是否锁定上级、上上级佣金
+	    		brokers.put("child_"+grandpa_id, ""+getChildBrokerCount(grandpa_id));
+	    }
 	    return brokers;
     }   
     
+    //获取上级达人。如果没有上级达人则设置为当前达人
     private String getParentBroker(String broker_id) {
 	    String sqlQuery = "select parent_id from mod_broker where id=? limit 1";
 	    logger.debug("try to query parent broker.[SQL]"+sqlQuery);
@@ -233,6 +252,24 @@ public class ClearingBolt extends AbstractArangoBolt {
 	    }else {//如果没有上级达人则返回自己
 	    		logger.debug("has no parent broker.");
 	    		return broker_id;
+	    }
+    }
+    
+    //获取达人的下级达人数。用于判断是否达标
+    private int getChildBrokerCount(String broker_id) {
+	    String sqlQuery = "select count(*) as total from mod_broker where parent_id=?";
+	    logger.debug("try to query total child brokers.[SQL]"+sqlQuery);
+	    List<Column> queryParams=new ArrayList<Column>();
+	    queryParams.add(new Column("parent_id",broker_id,Types.VARCHAR));
+	    List<List<Column>> result = jdbcClientBiz.select(sqlQuery,queryParams);
+	    if (result != null && result.size() > 0) {
+	        String totalStr = result.get(0).get(0).getVal().toString();//上级达人ID
+	        if(totalStr == null || totalStr.trim().length()==0)//实际上，这不可能发生
+	        		return 0;
+	        return Integer.parseInt(totalStr);
+	    }else {//如果没有上级达人则返回自己
+	    		logger.debug("has no child brokers.");
+	    		return 0;
 	    }
     }
     
