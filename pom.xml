@@ -22,7 +22,7 @@
 		<groupId>org.apache.storm</groupId>
 		<artifactId>storm-core</artifactId>
 		<version>1.2.2</version>
-		<scope>provided</scope> 
+		<scope>provided</scope> <!-- 注意：需要提前放到flink/lib目录下 -->
 	</dependency>  
 
 	<!-- https://mvnrepository.com/artifact/org.apache.flink/flink-storm -->
