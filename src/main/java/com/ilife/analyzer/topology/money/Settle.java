@@ -3,6 +3,7 @@ package com.ilife.analyzer.topology.money;
 import java.sql.Types;
 import java.util.List;
 
+import org.apache.flink.storm.api.FlinkTopology;
 import org.apache.storm.arangodb.bolt.ArangoInsertBolt;
 import org.apache.storm.arangodb.bolt.ArangoLookupBolt;
 import org.apache.storm.arangodb.bolt.ArangoUpdateBolt;
@@ -50,7 +51,7 @@ public class Settle extends AbstractTopology {
 	    }
 
 	    @Override
-	    public StormTopology getTopology() {
+	    public FlinkTopology getTopology() {
 	    		//1，获取待结算清分记录
 	    		ClearedSpout leaves = new ClearedSpout(businessConnectionProvider);
 	    		
@@ -62,6 +63,6 @@ public class Settle extends AbstractTopology {
 	        TopologyBuilder builder = new TopologyBuilder();
 	        builder.setSpout(nodeSpout, leaves, 1);
 	        builder.setBolt(nodeCalcBolt, settleBolt, 1).globalGrouping(nodeSpout);//由于采用先分组汇总，后更新状态，需要用事务方式进行处理
-	        return builder.createTopology();
+	        return FlinkTopology.createTopology(builder);
 	    }
 }

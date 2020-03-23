@@ -1,5 +1,6 @@
 package com.ilife.analyzer.topology;
 
+import org.apache.flink.storm.api.FlinkTopology;
 import org.apache.storm.arangodb.bolt.ArangoLookupBolt;
 import org.apache.storm.arangodb.bolt.ArangoUpdateBolt;
 import org.apache.storm.arangodb.common.QueryFilterCreator;
@@ -30,7 +31,7 @@ public class SampleTopology extends AbstractTopology {
 	    }
 
 	    @Override
-	    public StormTopology getTopology() {
+	    public FlinkTopology getTopology() {
 	    		//1，ArangoSpout：从Arangodb读取数据
 	    		String query = "FOR doc in my_stuff_test filter doc.test=='咪咪' limit 50 return doc";
 	    		String[] fields = {"_key","source","title","_doc"};
@@ -57,12 +58,12 @@ public class SampleTopology extends AbstractTopology {
 	    	                .withProducerProperties(props)
 	    	                .withTopicSelector(new DefaultTopicSelector("test"))
 	    	                .withTupleToKafkaMapper(new FieldNameBasedTupleToKafkaMapper("_key","title"));
-	    		
+	    		 
 	        TopologyBuilder builder = new TopologyBuilder();
 	        builder.setSpout("SampleSpout", arangoSpout, 1);
 	        builder.setBolt("SampleBolt", logBolt, 5).shuffleGrouping("SampleSpout");
 	        //builder.setBolt("UpdateBolt", updateBolt, 5).shuffleGrouping("SampleBolt");
 	        //builder.setBolt("KafkaBolat", kafkaBolt, 1).shuffleGrouping("SampleSpout");
-	        return builder.createTopology();
+	        return FlinkTopology.createTopology(builder);
 	    }
 }

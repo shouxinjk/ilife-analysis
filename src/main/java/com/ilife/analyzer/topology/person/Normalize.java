@@ -3,6 +3,7 @@ package com.ilife.analyzer.topology.person;
 import java.sql.Types;
 import java.util.List;
 
+import org.apache.flink.storm.api.FlinkTopology;
 import org.apache.storm.arangodb.bolt.ArangoInsertBolt;
 import org.apache.storm.arangodb.bolt.ArangoLookupBolt;
 import org.apache.storm.arangodb.bolt.ArangoUpdateBolt;
@@ -48,7 +49,7 @@ public class Normalize extends AbstractTopology {
 	    }
 
 	    @Override
-	    public StormTopology getTopology() {
+	    public FlinkTopology getTopology() {
 	    		//1，获取pending状态property记录，内部将处理
 	    		PropertySpout propertySpout = new PropertySpout(analyzeConnectionProvider);
 	    		
@@ -80,6 +81,6 @@ public class Normalize extends AbstractTopology {
 	        builder.setSpout(spout, propertySpout, 1);
 	        builder.setBolt(findScoreBolt, jdbcFindScoreBolt, 5).shuffleGrouping(spout);
 	        builder.setBolt(updateProperyBolt, jdbcUpdateBolt, 1).shuffleGrouping(findScoreBolt);
-	        return builder.createTopology();
+	        return FlinkTopology.createTopology(builder);
 	    }
 }

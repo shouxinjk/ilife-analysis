@@ -3,6 +3,7 @@ package com.ilife.analyzer.topology.person;
 import java.sql.Types;
 import java.util.List;
 
+import org.apache.flink.storm.api.FlinkTopology;
 import org.apache.storm.arangodb.bolt.ArangoInsertBolt;
 import org.apache.storm.arangodb.bolt.ArangoLookupBolt;
 import org.apache.storm.arangodb.bolt.ArangoUpdateBolt;
@@ -55,7 +56,7 @@ public class CreateFilter extends AbstractTopology {
 	    }
 
 	    @Override
-	    public StormTopology getTopology() {
+	    public FlinkTopology getTopology() {
 	    		//1，FilterSpout：读取状态为pending的初始数据，读取后即更新状态为ready
 	    		FilterSpout spout = new FilterSpout(analyzeConnectionProvider,"pending");
 	    		
@@ -68,6 +69,6 @@ public class CreateFilter extends AbstractTopology {
 	        TopologyBuilder builder = new TopologyBuilder();
 	        builder.setSpout(nameSpout, spout, 1);
 	        builder.setBolt(nameBolt, bolt, 5).shuffleGrouping(nameSpout);
-	        return builder.createTopology();
+	        return FlinkTopology.createTopology(builder);
 	    }
 }

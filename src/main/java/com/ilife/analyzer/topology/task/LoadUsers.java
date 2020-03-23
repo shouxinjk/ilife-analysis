@@ -3,6 +3,7 @@ package com.ilife.analyzer.topology.task;
 import java.sql.Types;
 import java.util.List;
 
+import org.apache.flink.storm.api.FlinkTopology;
 import org.apache.storm.arangodb.bolt.ArangoInsertBolt;
 import org.apache.storm.arangodb.bolt.ArangoLookupBolt;
 import org.apache.storm.arangodb.bolt.ArangoUpdateBolt;
@@ -52,7 +53,7 @@ public class LoadUsers extends AbstractTopology {
 	    }
 
 	    @Override
-	    public StormTopology getTopology() {
+	    public FlinkTopology getTopology() {
 	    		//1，ArangoSpout：从arangodb读取状态为pending的初始数据，读取后即更新状态为ready
 	    		String query = "FOR doc in user_users filter doc.isRecommend == null or doc.status='pending' update doc with { isRecommend: true } in user_users limit 10 return OLD";
 	    		String[] fields = {"_key","query","tags"};//query是个性化查询
@@ -76,6 +77,6 @@ public class LoadUsers extends AbstractTopology {
 	        TopologyBuilder builder = new TopologyBuilder();
 	        builder.setSpout(spout, arangoSpout, 1);
 	        builder.setBolt(insertTaskBolt, jdbcInsertRecommdationTaskBolt, 5).shuffleGrouping(spout);
-	        return builder.createTopology();
+	        return FlinkTopology.createTopology(builder);
 	    }
 }

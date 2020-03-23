@@ -17,6 +17,7 @@
  */
 package com.ilife.analyzer.topology.person;
 
+import org.apache.flink.storm.api.FlinkTopology;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
@@ -42,7 +43,7 @@ public class OnChangePersona extends AbstractTopology {
     }
 
     @Override
-    public StormTopology getTopology() {
+    public FlinkTopology getTopology() {
     		//1，从persona topic接收kafka消息。消息包含修改后的内容，格式为
     		// {persona:{old:{},new:{}},needs:{old:{},new:{}},occasions:{old:{},new:{}} }
     		String endpoint = props.getProperty("kafka.bootstrap.servers");
@@ -66,6 +67,6 @@ public class OnChangePersona extends AbstractTopology {
         TopologyBuilder builder = new TopologyBuilder();
 //        builder.setSpout(SPOUT_KAFKA_CHANGE_PERSONA, kafkaSpout, 1);
 //        builder.setBolt(SQL_DELETE_UNMATCH_CHECKUP_ITEM, jdbcCleanCheckupItemBolt, 1).shuffleGrouping(PENDING_CHECKUP_ITEM_SPOUT);
-        return builder.createTopology();
+        return FlinkTopology.createTopology(builder);
     }
 }

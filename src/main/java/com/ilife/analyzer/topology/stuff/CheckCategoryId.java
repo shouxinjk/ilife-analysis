@@ -3,6 +3,7 @@ package com.ilife.analyzer.topology.stuff;
 import java.sql.Types;
 import java.util.List;
 
+import org.apache.flink.storm.api.FlinkTopology;
 import org.apache.storm.arangodb.bolt.ArangoInsertBolt;
 import org.apache.storm.arangodb.bolt.ArangoLookupBolt;
 import org.apache.storm.arangodb.bolt.ArangoUpdateBolt;
@@ -47,7 +48,7 @@ public class CheckCategoryId extends AbstractTopology {
 	    }
 
 	    @Override
-	    public StormTopology getTopology() {
+	    public FlinkTopology getTopology() {
 	    		//1，获取id为空的property记录，将匹配填写propertyId
 	    		CategoryIdSpout propertySpout = new CategoryIdSpout(analyzeConnectionProvider);
 	    		
@@ -77,6 +78,6 @@ public class CheckCategoryId extends AbstractTopology {
 	        builder.setSpout(spout, propertySpout, 1);
 	        builder.setBolt(findScoreBolt, jdbcFindScoreBolt, 5).shuffleGrouping(spout);
 	        builder.setBolt(updateProperyBolt, jdbcUpdateBolt, 1).shuffleGrouping(findScoreBolt);
-	        return builder.createTopology();
+	        return FlinkTopology.createTopology(builder);
 	    }
 }

@@ -17,6 +17,9 @@
  */
 package com.ilife.analyzer.topology;
 
+import org.apache.flink.storm.api.FlinkLocalCluster;
+import org.apache.flink.storm.api.FlinkSubmitter;
+import org.apache.flink.storm.api.FlinkTopology;
 import org.apache.log4j.Logger;
 import org.apache.storm.Config;
 import org.apache.storm.StormSubmitter;
@@ -70,18 +73,20 @@ public abstract class AbstractTopology {
         
         //prepare Kafka configuration
         //refer to ilife.properties
-        
         config.setNumAckers(0);//we don't need ack
 //        System.out.println(config);
         
         //submit topology
         String topoName = props.getProperty("common.topology.name", "ilifeAnalyzeTopology");
         if (args != null && args.length > 0) {
-        	config.setNumWorkers(1); 
-            StormSubmitter.submitTopology(args[0], config, getTopology());
+        		config.setNumWorkers(1); 
+            //StormSubmitter.submitTopology(args[0], config, getTopology());
+        		FlinkSubmitter.submitTopology(args[0], config, getTopology());
         } else {
-        	//TODO to set TOPOLOGY_ACKERS to 0 to disable ack
-            LocalCluster cluster = new LocalCluster();
+        		//TODO to set TOPOLOGY_ACKERS to 0 to disable ack
+            //LocalCluster cluster = new LocalCluster();
+        		//FlinkLocalCluster cluster = new FlinkLocalCluster();
+        		FlinkLocalCluster cluster = FlinkLocalCluster.getLocalCluster();
             cluster.submitTopology(topoName, config, getTopology());
             Thread.sleep(30000);
             cluster.killTopology(topoName);
@@ -117,6 +122,6 @@ public abstract class AbstractTopology {
         		logger.error("Wrong connection type. TYPE must be business or analyze.");
     }
 
-    public abstract StormTopology getTopology();
+    public abstract FlinkTopology getTopology();
 
 }

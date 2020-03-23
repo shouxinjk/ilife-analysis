@@ -1,5 +1,6 @@
 package com.ilife.analyzer.topology.person;
 
+import org.apache.flink.storm.api.FlinkTopology;
 import org.apache.storm.arangodb.spout.ArangoSpout;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.kafka.spout.KafkaSpout;
@@ -33,7 +34,7 @@ public class EvaluatePersona  extends AbstractTopology {
 	    }
 
 	    @Override
-	    public StormTopology getTopology() {
+	    public FlinkTopology getTopology() {
 	    		//1，Spout:获取待处理user_persona记录
 	    		PersonaSpout spout= new PersonaSpout(analyzeConnectionProvider);
 	    		//2，Bolt:分别计算阶层、阶段、分群得分
@@ -44,6 +45,6 @@ public class EvaluatePersona  extends AbstractTopology {
 	        TopologyBuilder builder = new TopologyBuilder();
 	        builder.setSpout(idSpout, spout, 1);
 	        builder.setBolt(idBolt, bolt, 1).shuffleGrouping(idSpout);
-	        return builder.createTopology();
+	        return FlinkTopology.createTopology(builder);
 	    }
 	}

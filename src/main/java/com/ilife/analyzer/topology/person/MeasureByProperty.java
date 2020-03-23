@@ -3,6 +3,7 @@ package com.ilife.analyzer.topology.person;
 import java.sql.Types;
 import java.util.List;
 
+import org.apache.flink.storm.api.FlinkTopology;
 import org.apache.storm.arangodb.bolt.ArangoInsertBolt;
 import org.apache.storm.arangodb.bolt.ArangoLookupBolt;
 import org.apache.storm.arangodb.bolt.ArangoUpdateBolt;
@@ -46,7 +47,7 @@ public class MeasureByProperty extends AbstractTopology {
 	    }
 
 	    @Override
-	    public StormTopology getTopology() {
+	    public FlinkTopology getTopology() {
 	    		//1，读取叶子节点，返回：id，dimension
 	    		MeasurePropertySpout leaves = new MeasurePropertySpout(analyzeConnectionProvider);
 	    		
@@ -79,6 +80,6 @@ public class MeasureByProperty extends AbstractTopology {
 	        builder.setSpout(nodeSpout, leaves, 1);
 	        builder.setBolt(nodeCalcScore, jdbcFindDimensionsBolt, 5).shuffleGrouping(nodeSpout);
 	        builder.setBolt(nodeUpdateScore, jdbcUpdateMeasureBolt, 1).shuffleGrouping(nodeCalcScore);
-	        return builder.createTopology();
+	        return FlinkTopology.createTopology(builder);
 	    }
 }

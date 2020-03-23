@@ -3,6 +3,7 @@ package com.ilife.analyzer.topology.money;
 import java.sql.Types;
 import java.util.List;
 
+import org.apache.flink.storm.api.FlinkTopology;
 import org.apache.storm.arangodb.bolt.ArangoInsertBolt;
 import org.apache.storm.arangodb.bolt.ArangoLookupBolt;
 import org.apache.storm.arangodb.bolt.ArangoUpdateBolt;
@@ -50,18 +51,17 @@ public class Clearing extends AbstractTopology {
 	    }
 
 	    @Override
-	    public StormTopology getTopology() {
+	    public FlinkTopology getTopology() {
 	    		//1，获取待清算订单：注意使用结算佣金作为输入
 	    		OrderSpout leaves = new OrderSpout(businessConnectionProvider);
 	    		
 	    		//2，清分计算
 	    		ClearingBolt clearingBolt = new ClearingBolt(props,database,collection,businessConnectionProvider,analyzeConnectionProvider);
-
             String nodeSpout = "order_spout";
             String nodeCalcBolt = "clearing_bolt";
 	        TopologyBuilder builder = new TopologyBuilder();
 	        builder.setSpout(nodeSpout, leaves, 1);
 	        builder.setBolt(nodeCalcBolt, clearingBolt, 5).shuffleGrouping(nodeSpout);
-	        return builder.createTopology();
+	        return FlinkTopology.createTopology(builder);
 	    }
 }

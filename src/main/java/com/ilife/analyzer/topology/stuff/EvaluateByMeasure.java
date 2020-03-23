@@ -3,6 +3,7 @@ package com.ilife.analyzer.topology.stuff;
 import java.sql.Types;
 import java.util.List;
 
+import org.apache.flink.storm.api.FlinkTopology;
 import org.apache.storm.arangodb.bolt.ArangoInsertBolt;
 import org.apache.storm.arangodb.bolt.ArangoLookupBolt;
 import org.apache.storm.arangodb.bolt.ArangoUpdateBolt;
@@ -49,7 +50,7 @@ public class EvaluateByMeasure extends AbstractTopology {
 	    }
 
 	    @Override
-	    public StormTopology getTopology() {
+	    public FlinkTopology getTopology() {
 	    		//1，读取叶子节点，返回：id，dimension
 	    		EvaluateMeasureSpout leaves = new EvaluateMeasureSpout(analyzeConnectionProvider);
 	    		
@@ -61,6 +62,6 @@ public class EvaluateByMeasure extends AbstractTopology {
 	        TopologyBuilder builder = new TopologyBuilder();
 	        builder.setSpout(nodeSpout, leaves, 1);
 	        builder.setBolt(nodeCalcBolt, dynamicEvaluateBolt, 5).shuffleGrouping(nodeSpout);
-	        return builder.createTopology();
+	        return FlinkTopology.createTopology(builder);
 	    }
 }
