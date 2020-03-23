@@ -25,6 +25,13 @@
 		<!--scope>provided</scope--> 
 	</dependency>  
 
+	<!-- https://mvnrepository.com/artifact/org.apache.flink/flink-storm -->
+	<dependency>
+	    <groupId>org.apache.flink</groupId>
+	    <artifactId>flink-storm_2.11</artifactId>
+	    <version>${flink.version}</version>
+	</dependency>
+	
     <!-- Apache Flink dependencies -->
     <!-- These dependencies are provided, because they should not be packaged into the JAR file. -->
 	<dependency>
@@ -51,7 +58,7 @@
 		<version>${flink.version}</version>
 		<scope>provided</scope>
 	</dependency>
-
+	<!-- connectors -->
 	<dependency>
 		<groupId>org.apache.flink</groupId>
 		<artifactId>flink-connector-twitter_${scala.binary.version}</artifactId>
@@ -64,14 +71,6 @@
 		<version>${flink.version}</version>
 	</dependency>
 
-	<!-- https://mvnrepository.com/artifact/org.apache.flink/flink-storm -->
-	<dependency>
-	    <groupId>org.apache.flink</groupId>
-	    <artifactId>flink-storm_2.11</artifactId>
-	    <version>${flink.version}</version>
-	</dependency>
-
-    
 	<dependency>
 	    <groupId>com.apache.storm</groupId>
 	    <version>0.0.1</version>
