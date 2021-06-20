@@ -63,7 +63,6 @@ public class SampleBolt extends AbstractArangoBolt {
         		minor.put("屁股", "圆润肥大");
         		version.put("minor", minor);
         		doc.getProperties().put("version", version);
-        		
         		arangoClient.update("my_stuff_test", doc.getKey(), doc);
         		
 	    		//继续向后传递
