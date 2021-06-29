@@ -62,7 +62,7 @@ public class SampleTopology extends AbstractTopology {
 	        TopologyBuilder builder = new TopologyBuilder();
 	        builder.setSpout("SampleSpout", arangoSpout, 1);
 	        builder.setBolt("SampleBolt", logBolt, 5).shuffleGrouping("SampleSpout");
-	        builder.setBolt("UpdateBolt", updateBolt, 5).shuffleGrouping("SampleBolt");
+//	        builder.setBolt("UpdateBolt", updateBolt, 5).shuffleGrouping("SampleBolt");
 	        //builder.setBolt("KafkaBolat", kafkaBolt, 1).shuffleGrouping("SampleSpout");
 	        return FlinkTopology.createTopology(builder);
 	    }

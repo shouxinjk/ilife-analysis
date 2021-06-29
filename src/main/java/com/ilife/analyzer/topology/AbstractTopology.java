@@ -78,7 +78,9 @@ public abstract class AbstractTopology {
         
         //submit topology
         String topoName = props.getProperty("common.topology.name", "ilifeAnalyzeTopology");
-        if (args != null && args.length > 0) {
+        String mode = props.getProperty("common.mode", "debug");
+        logger.info("\n\nworking mode:"+mode);
+        if (args != null && args.length > 0 ) {//&& "production".equalsIgnoreCase(mode)) {
         		config.setNumWorkers(1); 
             //StormSubmitter.submitTopology(args[0], config, getTopology());
         		FlinkSubmitter.submitTopology(args[0], config, getTopology());
