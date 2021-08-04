@@ -150,7 +150,7 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
 	       
 	        //4，同步到Arango
 	        if(tuple.getBooleanByField("featured"))  {
-	        		syncText(tuple.getValueByField("_key").toString(),tuple.getValueByField("type").toString(),sb.toString());
+	        		syncText(tuple.getValueByField("itemKey").toString(),tuple.getValueByField("type").toString(),sb.toString());
 	        }
 	    }else {//could not happend. 如果没有对应的值：do nothing
 	    		logger.debug("Failed to evaluate satisfication.");
@@ -187,7 +187,7 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
 	        
 	        //4，同步到Arango
 	        if(tuple.getBooleanByField("featured"))  {
-	        		syncText(tuple.getValueByField("_key").toString(),tuple.getValueByField("type").toString(),sb.toString());
+	        		syncText(tuple.getValueByField("itemKey").toString(),tuple.getValueByField("type").toString(),sb.toString());
 	        }	        
 	    }else {//could not happend. 如果没有对应的值：do nothing
 	    		logger.debug("Failed to evaluate satisfication.");
@@ -221,7 +221,7 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
 	        jdbcClientAnalyze.executeSql(sqlUpdate); 
 	        //3，同步到Arango
 	        if(tuple.getBooleanByField("featured"))  {
-	        		syncScore(tuple.getValueByField("_key").toString(),tuple.getValueByField("type").toString(),Double.parseDouble(row.get(1).getVal().toString()));
+	        		syncScore(tuple.getValueByField("itemKey").toString(),tuple.getValueByField("type").toString(),Double.parseDouble(row.get(1).getVal().toString()));
 	        }	        
 	    }else {//could not happend. 如果没有对应的值：do nothing
 	    		logger.debug("Failed to weighted-sum evaluation-measure score");
@@ -237,7 +237,7 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
 	    String sqlQuery = "select property,value,score,rank from property where itemKey=?";
 	    logger.debug("try to query item key-values.[SQL]"+sqlQuery);
 	    List<Column> queryParams=new ArrayList<Column>();
-	    queryParams.add(new Column("itemKey",tuple.getValueByField("_key"),Types.VARCHAR));//itemKey
+	    queryParams.add(new Column("itemKey",tuple.getValueByField("itemKey"),Types.VARCHAR));//itemKey
 	    Binding binding = new Binding();
 	    List<List<Column>> result = jdbcClientAnalyze.select(sqlQuery,queryParams);
 	    if (result != null && result.size() != 0) {
@@ -258,13 +258,13 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
 			    		.replace("_TEXT", value.toString())
 			    		.replace("_EVALUATE", tuple.getValueByField("evaluation").toString())
 			    		.replace("_TYPE", tuple.getValueByField("type").toString())
-			    		.replace("_ITEMKEY", tuple.getValueByField("_key").toString());
+			    		.replace("_ITEMKEY", tuple.getValueByField("itemKey").toString());
 	    		logger.debug("try to update dynamic calculate result.[SQL]"+sqlUpdate);
 	        jdbcClientAnalyze.executeSql(sqlUpdate); 
 	        
 	        //4，同步到Arango
 	        if(tuple.getBooleanByField("featured"))  {
-	        		syncText(tuple.getValueByField("_key").toString(),tuple.getValueByField("type").toString(),value.toString());
+	        		syncText(tuple.getValueByField("itemKey").toString(),tuple.getValueByField("type").toString(),value.toString());
 	        }
 	    }else {//如果没有对应的值：do nothing
 	    		logger.debug("Cannot find item values");
