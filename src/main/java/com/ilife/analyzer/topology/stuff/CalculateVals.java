@@ -17,7 +17,6 @@ import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
 
 import com.google.common.collect.Lists;
-import com.ilife.analyzer.bolt.stuff.CalcValsBolt;
 import com.ilife.analyzer.spout.stuff.PropertyValsSpout;
 import com.ilife.analyzer.topology.AbstractTopology;
 
