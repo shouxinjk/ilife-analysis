@@ -48,26 +48,24 @@ public class CheckCategoryId extends AbstractTopology {
 
 	    @Override
 	    public StormTopology getTopology() {
-	    		//1，获取id为空的property记录，将匹配填写propertyId
-	    		CategoryIdSpout propertySpout = new CategoryIdSpout(analyzeConnectionProvider);
-	    		
-	    		//2，读取对应的标注value记录
-            String sql = "select id as categoryId,name as categoryName from mod_item_category where name=?";
-            List<Column> queryParamColumns = Lists.newArrayList(
-            		new Column("categoryName", Types.VARCHAR)
-            		);
-            String[] output_fields = {"categoryId","categoryName"};
-            Fields outputFields = new Fields(output_fields);
-            JdbcLookupMapper jdbcLookupMapper = new SimpleJdbcLookupMapper(outputFields, queryParamColumns);
-            JdbcLookupBolt jdbcFindScoreBolt = new JdbcLookupBolt(businessConnectionProvider, sql, jdbcLookupMapper);
-
+    		//1，获取id为空的property记录，将匹配填写propertyId
+    		CategoryIdSpout propertySpout = new CategoryIdSpout(analyzeConnectionProvider);
+    		
+    		//2，直接从platform_categories读取映射记录
+            String aql = "FOR doc in platform_categories filter doc.name==@name limit 1 return  {mappingId:doc.mappingId,mappingName:doc.mappingName,name:doc.name}";
+            SimpleQueryFilterCreator queryCreator = new SimpleQueryFilterCreator().withField("name");
+            String[] mapping_fields = {"name","mappingId","mappingName"};
+            ArangoLookupMapper mapper = new SimpleArangoLookupMapper(mapping_fields);
+            ArangoLookupBolt arangoLookupBolt = new ArangoLookupBolt(props,"sea",aql,queryCreator,mapper);
+            
             //3，将id更新到property记录
             List<Column> propertySchemaColumns = Lists.newArrayList(
-            		new Column("categoryId", Types.VARCHAR),
-            		new Column("categoryName", Types.VARCHAR));
+            		new Column("mappingId", Types.VARCHAR),
+            		new Column("mappingName", Types.VARCHAR),
+            		new Column("name", Types.VARCHAR));
             JdbcMapper updateMapper = new SimpleJdbcMapper(propertySchemaColumns);
             JdbcInsertBolt jdbcUpdateBolt = new JdbcInsertBolt(analyzeConnectionProvider, updateMapper)
-                    .withInsertQuery("update property set categoryId=? where category=?");
+                    .withInsertQuery("update property set categoryId=?,mappingName=? where category=?");
 
             //装配topology
             String spout = "check_categoryId_spout";
@@ -75,7 +73,7 @@ public class CheckCategoryId extends AbstractTopology {
             String updateProperyBolt = "check_categoryId_update_id";
 	        TopologyBuilder builder = new TopologyBuilder();
 	        builder.setSpout(spout, propertySpout, 1);
-	        builder.setBolt(findScoreBolt, jdbcFindScoreBolt, 5).shuffleGrouping(spout);
+	        builder.setBolt(findScoreBolt, arangoLookupBolt, 1).shuffleGrouping(spout);
 	        builder.setBolt(updateProperyBolt, jdbcUpdateBolt, 1).shuffleGrouping(findScoreBolt);
 	        return builder.createTopology();
 	    }

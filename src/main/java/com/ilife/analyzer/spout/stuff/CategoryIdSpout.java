@@ -59,7 +59,7 @@ public class CategoryIdSpout extends BaseRichSpout implements IRichSpout {
     }
 
     public void nextTuple() {
-        String sql = "select category from property where categoryId is null limit 10";
+        String sql = "select distinct(category) as name from property where categoryId is null limit 10";//批量处理，一次性处理所有同名记录
         logger.debug("try to query candidate properties.[SQL]"+sql+"[query]"+queryParams);
         List<List<Column>> result = jdbcClient.select(sql,queryParams);
         if (result != null && result.size() != 0) {
@@ -87,7 +87,7 @@ public class CategoryIdSpout extends BaseRichSpout implements IRichSpout {
     }
 
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("categoryName"));
+        declarer.declare(new Fields("name"));
     }
 
     @Override
