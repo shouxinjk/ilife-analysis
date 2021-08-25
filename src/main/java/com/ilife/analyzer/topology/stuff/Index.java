@@ -36,6 +36,8 @@ import com.ilife.analyzer.bolt.stuff.CreateMeasureTaskBolt;
 import com.ilife.analyzer.topology.AbstractTopology;
 
 /**
+ * @deprecated 只是从文档库读取后发送到ES，直接采用logstash完成，httpinput-->httpoutput
+ * TODO:定义logstash规则
  * @author alexchew
  * 提交索引： 按照索引状态进行更新。如果指定记录的索引状态为pending，则提交索引
  * 
