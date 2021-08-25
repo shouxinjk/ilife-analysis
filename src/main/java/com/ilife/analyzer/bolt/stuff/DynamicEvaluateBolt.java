@@ -67,6 +67,7 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
     }
 
     public void prepare(Map map, TopologyContext topologyContext, OutputCollector collector) {
+    	super.prepare(map, topologyContext, collector);
         this.collector = collector;
         connectionProviderBiz.prepare();
         connectionProviderAnalyze.prepare();
@@ -242,10 +243,10 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
 	    List<List<Column>> result = jdbcClientAnalyze.select(sqlQuery,queryParams);
 	    if (result != null && result.size() != 0) {
 	        for (List<Column> row : result) {//逐行解析并放入参数，每一个key包含三个值，格式为property.value-value,property.score-score,property.rank-rank
-	        		binding.setVariable(row.get(0).getVal().toString(), row.get(0).getVal());//可以通过键名得到数值，相当于property.value
-	        		binding.setVariable(row.get(0).getVal()+".value", row.get(0).getVal());
-	        		binding.setVariable(row.get(0).getVal()+".score", row.get(1).getVal());
-	        		binding.setVariable(row.get(0).getVal()+".rank", row.get(2).getVal());
+	        		binding.setVariable(row.get(0).getVal().toString(), row.get(1).getVal());//可以通过键名得到数值，相当于property.value
+	        		binding.setVariable(row.get(0).getVal()+".value", row.get(1).getVal());
+	        		binding.setVariable(row.get(0).getVal()+".score", row.get(2).getVal());
+	        		binding.setVariable(row.get(0).getVal()+".rank", row.get(3).getVal());
 	        }
 
 	        //2，Groovy脚本计算。脚本中引用变量需要通过property+value/score/rank的组合
