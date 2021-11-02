@@ -58,7 +58,7 @@ public class Load extends AbstractTopology {
 	    @Override
 	    public StormTopology getTopology() {
 	    		//1，ArangoSpout：从arangodb读取状态为pending的初始数据，读取后即更新状态为ready
-	    		String query = "FOR doc in my_stuff filter doc.status == 'pending' update doc with { status: 'ready' } in my_stuff limit 10 return OLD";
+	    		String query = "FOR doc in my_stuff filter doc.status.load == 'pending' update doc with { status:{load: 'ready'},category:CONCAT_SEPARATOR(' ',doc.category) } in my_stuff limit 10 return NEW";
 	    		String[] fields = {"_key","_doc","category"};
 	    		ArangoSpout arangoSpout = new ArangoSpout(props,arango_harvest)
 	    				.withQuery(query)

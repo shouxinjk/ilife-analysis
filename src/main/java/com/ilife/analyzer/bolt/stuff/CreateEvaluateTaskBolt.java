@@ -91,9 +91,19 @@ public class CreateEvaluateTaskBolt extends BaseRichBolt {
     }
 
     public void execute(Tuple tuple) {
-    	 	String category = tuple.getStringByField("category");//获取category字段
-    	 	queryParams.clear();
-        queryParams.add(new Column("category", category, Types.VARCHAR));
+	 	String category = "";
+	 	try {
+	 		category = tuple.getStringByField("category");//默认按照字符串获取category字段
+	 	}catch(ClassCastException ex) {//但多数情况下是数组
+	 		try {
+	 			List<Object> categories = tuple.getValues();
+	 			category = ""+categories.get(categories.size()-1);//取最末级作为类目
+	 		}catch(Exception e) {
+	 			//do nothing
+	 		}
+	 	}
+	 	queryParams.clear();
+    	queryParams.add(new Column("category", category, Types.VARCHAR));
         
  	    	//查询evaluation-evaluation记录
  		//1，查询业务库得到evaluation-evaluation记录
