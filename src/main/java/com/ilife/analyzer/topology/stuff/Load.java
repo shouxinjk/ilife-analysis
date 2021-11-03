@@ -59,7 +59,7 @@ public class Load extends AbstractTopology {
 	    public StormTopology getTopology() {
 	    		//1，ArangoSpout：从arangodb读取状态为pending的初始数据，读取后即更新状态为ready
 	    		String query = "FOR doc in my_stuff filter doc.status.load == 'pending' update doc with { status:{load: 'ready'},category:CONCAT_SEPARATOR(' ',doc.category) } in my_stuff limit 10 return NEW";
-	    		String[] fields = {"_key","_doc","category"};
+	    		String[] fields = {"_key","_doc","category","source"};
 	    		ArangoSpout arangoSpout = new ArangoSpout(props,arango_harvest)
 	    				.withQuery(query)
 	    				.withFields(fields);
@@ -71,8 +71,8 @@ public class Load extends AbstractTopology {
 	    		
 	    		//2.2，按照属性打散数据记录写入key-value数据库
 	    		//2.2.1，将json打散为行列数据
-	    		String[] infields = {"_doc","category","_key"};
-	    		String[] outfields = {"property","value","category","itemKey"};
+	    		String[] infields = {"_doc","category","_key","source"};
+	    		String[] outfields = {"property","value","category","itemKey","source"};
 	    		JsonParseBolt jsonParser = new JsonParseBolt(infields,outfields);//从 _doc字段读取json字符串，输出key、value字段; 并且附加其他字段如category,itemKey
 	    		
 	    		//2.2.2，行列数据写入关系数据库:category,property(key),value,status,modifiedOn。用于归一化任务。
@@ -80,21 +80,23 @@ public class Load extends AbstractTopology {
             		new Column("property", Types.VARCHAR),
             		new Column("value", Types.VARCHAR),
             		new Column("category", Types.VARCHAR),
+            		new Column("source", Types.VARCHAR),
             		new Column("itemKey", Types.VARCHAR));
             JdbcMapper jdbcMapper = new SimpleJdbcMapper(columns);
             JdbcInsertBolt jdbcInsertPropertyBolt = new JdbcInsertBolt(analyzeConnectionProvider, jdbcMapper)
-                    .withInsertQuery("insert ignore into property(property,value,category,itemKey,status,createdOn,modifiedOn) "
-                    		+ "values (?,?,?,?,'pending',now(),now()) on duplicate key update revision=revision+1");//属性表唯一校验规则：category、property、itemKey、value
+                    .withInsertQuery("insert ignore into property(property,value,category,platform,itemKey,status,createdOn,modifiedOn) "
+                    		+ "values (?,?,?,?,?,'pending',now(),now()) on duplicate key update revision=revision+1");//属性表唯一校验规则：category、property、itemKey、value
             
             //2.2.3，将属性写入标注数据表：用于归一化任务，收集手动或自动数据标注
             List<Column> columns2 = Lists.newArrayList(
             		new Column("property", Types.VARCHAR),
             		new Column("value", Types.VARCHAR),
+            		new Column("source", Types.VARCHAR),
             		new Column("category", Types.VARCHAR));
             JdbcMapper jdbcMapper2 = new SimpleJdbcMapper(columns2);
             JdbcInsertBolt jdbcInsertValueBolt = new JdbcInsertBolt(analyzeConnectionProvider, jdbcMapper2)
-                    .withInsertQuery("insert ignore into value(property,value,category,status,revision,createdOn,modifiedOn) "
-                    		+ "values (?,?,?,'pending',1,now(),now())");//标注数据表唯一性校验规则：category、property、value。pending状态表示尚未经过标注，只是默认值            
+                    .withInsertQuery("insert ignore into value(property,value,platform,category,status,revision,createdOn,modifiedOn) "
+                    		+ "values (?,?,?,?,'pending',1,now(),now())");//标注数据表唯一性校验规则：category、property、value。pending状态表示尚未经过标注，只是默认值            
            
             //2.2.4，写入客观评价任务表：
             //写入measure-property：维度和属性关系。读取对应category的dimension-measure定义，写入分析库
