@@ -173,7 +173,8 @@ public class FulfillmentEvaluateBolt extends AbstractArangoBolt {
 		options.keepNull(false);//设置keepNull为false
 
 		//同步到arangodb
-		arangoClient.update("my_stuff", doc.getKey(), doc, options);    	
+//		arangoClient.update("my_stuff", doc.getKey(), doc, options); 
+		arangoClient.update("my_stuff", doc.getKey(), doc);    	
     }
 
     @Override
