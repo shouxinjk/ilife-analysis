@@ -51,10 +51,10 @@ public class CheckCategoryId extends AbstractTopology {
     		//1，获取id为空的property记录，将匹配填写propertyId
     		CategoryIdSpout propertySpout = new CategoryIdSpout(analyzeConnectionProvider);
     		
-    		//2，直接从platform_categories读取映射记录
-            String aql = "FOR doc in platform_categories filter doc.name==@name limit 1 return  {mappingId:doc.mappingId,mappingName:doc.mappingName,name:doc.name}";
-            SimpleQueryFilterCreator queryCreator = new SimpleQueryFilterCreator().withField("name");
-            String[] mapping_fields = {"name","mappingId","mappingName"};
+    		//2，直接从platform_categories读取映射记录，根据platform及category名称匹配。目录名称匹配规则：末级节点匹配，或全路径匹配
+            String aql = "FOR doc in platform_categories filter doc.source==@platform and (doc.name==@category or concat(doc.names)==@category) limit 1 return  {mappingId:doc.mappingId,mappingName:doc.mappingName,category:doc.name,platform:doc.source}";
+            SimpleQueryFilterCreator queryCreator = new SimpleQueryFilterCreator().withField("platform","category");
+            String[] mapping_fields = {"mappingId","mappingName","category","platform"};
             ArangoLookupMapper mapper = new SimpleArangoLookupMapper(mapping_fields);
             ArangoLookupBolt arangoLookupBolt = new ArangoLookupBolt(props,"sea",aql,queryCreator,mapper);
             
@@ -62,19 +62,33 @@ public class CheckCategoryId extends AbstractTopology {
             List<Column> propertySchemaColumns = Lists.newArrayList(
             		new Column("mappingId", Types.VARCHAR),
             		new Column("mappingName", Types.VARCHAR),
-            		new Column("name", Types.VARCHAR));
+            		new Column("category", Types.VARCHAR),
+            		new Column("platform", Types.VARCHAR));
             JdbcMapper updateMapper = new SimpleJdbcMapper(propertySchemaColumns);
             JdbcInsertBolt jdbcUpdateBolt = new JdbcInsertBolt(analyzeConnectionProvider, updateMapper)
-                    .withInsertQuery("update property set categoryId=?,mappingName=? where category=?");
-
+                    .withInsertQuery("update property set categoryId=?,mappingName=? where category=? and platform=?");
+            
+            //4，根据匹配的categoryIdproperty装载到platform_properties，便于建立属性映射。仅选取props.xxx 属性
+            String sqlFindProps = "select platform as `source`,? as cid,substring(property,7) as name from property where platform=? and category=? and substring(property,1,6)='props.'";
+            List<Column> queryParamColumns = Lists.newArrayList(
+            		new Column("mappingId", Types.VARCHAR),//映射的标准目录ID
+            		new Column("platform", Types.VARCHAR),
+            		new Column("category", Types.VARCHAR));
+            String[] prop_fields = {"source","cid","name"};
+            Fields outputFields = new Fields(prop_fields);
+            JdbcLookupMapper jdbcLookupMapper = new SimpleJdbcLookupMapper(outputFields, queryParamColumns);
+            JdbcLookupBolt jdbcFindPropsBolt = new JdbcLookupBolt(analyzeConnectionProvider, sqlFindProps, jdbcLookupMapper);
+            //5，写入platform_properties
+    		ArangoMapper arangoMapper = new SimpleArangoMapper(prop_fields);
+    		ArangoInsertBolt insertPropsBolt = new ArangoInsertBolt(props,"sea","platform_properties",arangoMapper);
+    		
             //装配topology
-            String spout = "check_categoryId_spout";
-            String findScoreBolt = "check_categoryId_find_id";
-            String updateProperyBolt = "check_categoryId_update_id";
 	        TopologyBuilder builder = new TopologyBuilder();
-	        builder.setSpout(spout, propertySpout, 1);
-	        builder.setBolt(findScoreBolt, arangoLookupBolt, 1).shuffleGrouping(spout);
-	        builder.setBolt(updateProperyBolt, jdbcUpdateBolt, 1).shuffleGrouping(findScoreBolt);
+	        builder.setSpout("check_categoryId_spout", propertySpout, 1);
+	        builder.setBolt("check_categoryId_find_id", arangoLookupBolt, 1).shuffleGrouping("check_categoryId_spout");
+	        builder.setBolt("check_categoryId_update_id", jdbcUpdateBolt, 1).shuffleGrouping("check_categoryId_find_id");
+	        builder.setBolt("query_props_by_category", jdbcFindPropsBolt, 1).shuffleGrouping("check_categoryId_find_id");
+	        builder.setBolt("insert_platform_props", insertPropsBolt, 1).shuffleGrouping("query_props_by_category");
 	        return builder.createTopology();
 	    }
 }
