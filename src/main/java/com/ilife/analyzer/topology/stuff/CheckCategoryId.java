@@ -82,7 +82,7 @@ public class CheckCategoryId extends AbstractTopology {
             //5，写入platform_properties
     		ArangoMapper arangoMapper = new SimpleArangoMapper(prop_fields);
     		ArangoInsertBolt insertPropsBolt = new ArangoInsertBolt(props,"sea","platform_properties",arangoMapper);
-    		
+
             //装配topology
 	        TopologyBuilder builder = new TopologyBuilder();
 	        builder.setSpout("check_categoryId_spout", propertySpout, 1);
