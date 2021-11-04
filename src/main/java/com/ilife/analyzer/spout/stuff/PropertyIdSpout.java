@@ -59,7 +59,7 @@ public class PropertyIdSpout extends BaseRichSpout implements IRichSpout {
     }
 
     public void nextTuple() {
-        String sql = "select categoryId,property as PropertyName from property where propertyId is null and categoryId is not null limit 20";
+        String sql = "select platform,property as propName from property where propertyId is null and categoryId is not null limit 20";
         logger.debug("try to query candidate properties.[SQL]"+sql+"[query]"+queryParams);
         List<List<Column>> result = jdbcClient.select(sql,queryParams);
         if (result != null && result.size() != 0) {
@@ -87,7 +87,7 @@ public class PropertyIdSpout extends BaseRichSpout implements IRichSpout {
     }
 
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("categoryId","propertyName"));
+        declarer.declare(new Fields("platform","propName"));
     }
 
     @Override

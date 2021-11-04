@@ -27,16 +27,20 @@ import org.apache.storm.topology.TopologyBuilder;
 import org.apache.storm.tuple.Fields;
 
 import com.google.common.collect.Lists;
+import com.ilife.analyzer.spout.stuff.CategoryIdSpout;
 import com.ilife.analyzer.spout.stuff.PropertyIdSpout;
 import com.ilife.analyzer.spout.stuff.PropertySpout;
 import com.ilife.analyzer.topology.AbstractTopology;
 
 /**
- * @author alexchew
- * 根据category、property得到对应的propertyId。用于准备进行维度分析
- * 1，从分析库property内读取propertyId为null的记录，返回category、property
- * 2，根据category、proptery从业务库内读取propertyId
- * 3，将propertyId更新到分析库property表内
+ * 
+ * 将已经建立映射的属性ID补充到分析库property 及 value表
+ * 
+ * 处理逻辑：
+ * 1，查询分析库 property 表内，获取所有propertyId为空的记录
+ * 2，根据source、property名称从platform_properties内查找与标准类目的映射记录
+ * 3.1 将映射信息更新到 property 表
+ * 3.2 将映射信息更新到 value 表
  *
  */
 public class CheckPropertyId extends AbstractTopology {
@@ -47,37 +51,42 @@ public class CheckPropertyId extends AbstractTopology {
 
 	    @Override
 	    public StormTopology getTopology() {
-	    		//1，获取id为空的property记录，将匹配填写propertyId
-	    		PropertyIdSpout propertySpout = new PropertyIdSpout(analyzeConnectionProvider);
-	    		
-	    		//2，读取对应的标注value记录
-            String sql = "select id as propertyId,category as categoryId,property as propertyName from mod_measure where category=? and property=?";
-            List<Column> queryParamColumns = Lists.newArrayList(
-            		//new Column("propertyId", Types.VARCHAR),
-            		new Column("categoryId", Types.VARCHAR),
-            		new Column("propertyName", Types.VARCHAR));
-            String[] output_fields = {"propertyId","categoryId","propertyName"};
-            Fields outputFields = new Fields(output_fields);
-            JdbcLookupMapper jdbcLookupMapper = new SimpleJdbcLookupMapper(outputFields, queryParamColumns);
-            JdbcLookupBolt jdbcFindScoreBolt = new JdbcLookupBolt(businessConnectionProvider, sql, jdbcLookupMapper);
-
-            //3，将id更新到property记录
+    		//1，获取id为空的property记录，将匹配填写propertyId
+    		PropertyIdSpout propertySpout = new PropertyIdSpout(analyzeConnectionProvider);
+    		
+    		//2，直接从platform_properties内读取映射记录，根据platform、property名称（props.xxx的xxx部分）匹配，得到property的mappingId
+            String aql = "FOR doc in platform_properties filter doc.source==@platform and doc.name==@propName limit 1 return  {mappingId:doc.mappingId,mappingName:doc.mappingName,platform:doc.source,name:doc.name}";
+            SimpleQueryFilterCreator queryCreator = new SimpleQueryFilterCreator().withField("platform","propName");
+            String[] mapping_fields = {"mappingId","mappingName","platform","name"};//映射的标准属性Id、映射的标准属性名称、来源平台、原始属性名称
+            ArangoLookupMapper mapper = new SimpleArangoLookupMapper(mapping_fields);
+            ArangoLookupBolt arangoLookupBolt = new ArangoLookupBolt(props,"sea",aql,queryCreator,mapper);
+            
+            //3.1，将propertyId更新到property记录
             List<Column> propertySchemaColumns = Lists.newArrayList(
-            		new Column("propertyId", Types.VARCHAR),
-            		new Column("categoryId", Types.VARCHAR),
-            		new Column("propertyName", Types.VARCHAR));
-            JdbcMapper updateMapper = new SimpleJdbcMapper(propertySchemaColumns);
-            JdbcInsertBolt jdbcUpdateBolt = new JdbcInsertBolt(analyzeConnectionProvider, updateMapper)
-                    .withInsertQuery("update property set propertyId=? where categoryId=? and property=?");
+            		new Column("mappingId", Types.VARCHAR),
+            		//new Column("mappingName", Types.VARCHAR),
+            		new Column("platform", Types.VARCHAR),
+            		new Column("name", Types.VARCHAR));
+            JdbcMapper updatePropMapper = new SimpleJdbcMapper(propertySchemaColumns);
+            JdbcInsertBolt jdbcUpdatePropBolt = new JdbcInsertBolt(analyzeConnectionProvider, updatePropMapper)
+                    .withInsertQuery("update property set propertyId=?,status='ready' where platform=? and property=?");
+            	
+            //3.2，将propertyId更新到value记录
+            List<Column> valueSchemaColumns = Lists.newArrayList(
+            		new Column("mappingId", Types.VARCHAR),
+            		//new Column("mappingName", Types.VARCHAR),
+            		new Column("platform", Types.VARCHAR),
+            		new Column("name", Types.VARCHAR));
+            JdbcMapper updateValueMapper = new SimpleJdbcMapper(valueSchemaColumns);
+            JdbcInsertBolt jdbcUpdateValueBolt = new JdbcInsertBolt(analyzeConnectionProvider, updateValueMapper)
+                    .withInsertQuery("update `value` set propertyId=? where platform=? and property=?");
 
             //装配topology
-            String spout = "check_propertyId_spout";
-            String findScoreBolt = "check_propertyId_find_id";
-            String updateProperyBolt = "check_propertyId_update_id";
 	        TopologyBuilder builder = new TopologyBuilder();
-	        builder.setSpout(spout, propertySpout, 1);
-	        builder.setBolt(findScoreBolt, jdbcFindScoreBolt, 5).shuffleGrouping(spout);
-	        builder.setBolt(updateProperyBolt, jdbcUpdateBolt, 1).shuffleGrouping(findScoreBolt);
+	        builder.setSpout("check_propertyId_spout", propertySpout, 1);
+	        builder.setBolt("find_prop_mapping_bolt", arangoLookupBolt, 1).shuffleGrouping("check_propertyId_spout");
+	        builder.setBolt("update_property_with_propertyId", jdbcUpdatePropBolt, 1).shuffleGrouping("find_prop_mapping_bolt");
+	        builder.setBolt("update_value_with_propertyId", jdbcUpdateValueBolt, 1).shuffleGrouping("find_prop_mapping_bolt");
 	        return builder.createTopology();
 	    }
 }

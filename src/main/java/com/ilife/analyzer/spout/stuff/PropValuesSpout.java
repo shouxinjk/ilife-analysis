@@ -18,11 +18,11 @@ import java.sql.Types;
 import java.util.*;
 
 /**
- * 查询得到categoryID为空的proeprty记录
+ * 从分析库 value 表内查询得到propertyId不为空，且状态为pending的proeprty记录
  * @author alexchew
  *
  */
-public class CategoryIdSpout extends BaseRichSpout implements IRichSpout {
+public class PropValuesSpout extends BaseRichSpout implements IRichSpout {
     boolean isDistributed;
     SpoutOutputCollector collector;
     Integer queryTimeoutSecs;
@@ -30,9 +30,9 @@ public class CategoryIdSpout extends BaseRichSpout implements IRichSpout {
     protected ConnectionProvider connectionProvider;
     public List<Column> queryParams;
     
-    private static final Logger logger = Logger.getLogger(CategoryIdSpout.class);
+    private static final Logger logger = Logger.getLogger(PropValuesSpout.class);
     
-    public CategoryIdSpout(ConnectionProvider connectionProvider) {
+    public PropValuesSpout(ConnectionProvider connectionProvider) {
         this.isDistributed = true;
         this.connectionProvider = connectionProvider;
         this.queryParams = new ArrayList<Column>();
@@ -59,8 +59,8 @@ public class CategoryIdSpout extends BaseRichSpout implements IRichSpout {
     }
 
     public void nextTuple() {
-        String sql = "select distinct platform,category from property where categoryId is null and category is not null and category!='' limit 10";//批量处理，一次性处理所有同名记录
-        logger.debug("try to query candidate properties.[SQL]"+sql+"[query]"+queryParams);
+        String sql = "select distinct propertyId,`value`,md5(concat(propertyId,`value`)) as id from `value` where status='pending' and propertyId is not null and `value` is not null limit 20";
+        logger.debug("try to query pending values.[SQL]"+sql+"[query]"+queryParams);
         List<List<Column>> result = jdbcClient.select(sql,queryParams);
         if (result != null && result.size() != 0) {
             for (List<Column> row : result) {
@@ -72,7 +72,7 @@ public class CategoryIdSpout extends BaseRichSpout implements IRichSpout {
                 this.collector.emit(values);
             }
         }else {//do nothing
-        		logger.info("none record has propertyId=null.");
+        		logger.info("none record has propertyId!=null && status='pending'.");
         }
         Thread.yield();
     }
@@ -87,7 +87,7 @@ public class CategoryIdSpout extends BaseRichSpout implements IRichSpout {
     }
 
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("platform","category"));
+        declarer.declare(new Fields("propertyId","value","id"));
     }
 
     @Override
