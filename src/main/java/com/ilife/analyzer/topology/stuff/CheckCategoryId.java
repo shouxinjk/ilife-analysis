@@ -69,12 +69,13 @@ public class CheckCategoryId extends AbstractTopology {
                     .withInsertQuery("update property set categoryId=?,mappingName=? where category=? and platform=?");
             
             //4，根据匹配的categoryIdproperty装载到platform_properties，便于建立属性映射。仅选取props.xxx 属性
-            String sqlFindProps = "select platform as `source`,? as cid,substring(property,7) as name from property where platform=? and category=? and substring(property,1,6)='props.'";
+            //cid：原始平台目录ID；name：原始属性名称，即props.xxx的xxx部分；source：来源平台
+            String sqlFindProps = "select platform as `source`,substring(property,7) as name,md5(concat(platform,substring(property,7))) as _key from property where platform=? and category=? and substring(property,1,6)='props.'";
             List<Column> queryParamColumns = Lists.newArrayList(
-            		new Column("mappingId", Types.VARCHAR),//映射的标准目录ID
+            		//new Column("mappingId", Types.VARCHAR),//映射的标准目录ID:platform_properties内使用原始平台目录ID，不需要映射目录Id
             		new Column("platform", Types.VARCHAR),
             		new Column("category", Types.VARCHAR));
-            String[] prop_fields = {"source","cid","name"};
+            String[] prop_fields = {"source","name","_key"};
             Fields outputFields = new Fields(prop_fields);
             JdbcLookupMapper jdbcLookupMapper = new SimpleJdbcLookupMapper(outputFields, queryParamColumns);
             JdbcLookupBolt jdbcFindPropsBolt = new JdbcLookupBolt(analyzeConnectionProvider, sqlFindProps, jdbcLookupMapper);
