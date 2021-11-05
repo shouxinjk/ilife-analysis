@@ -69,7 +69,7 @@ public class CheckPropertyId extends AbstractTopology {
             		new Column("name", Types.VARCHAR));
             JdbcMapper updatePropMapper = new SimpleJdbcMapper(propertySchemaColumns);
             JdbcInsertBolt jdbcUpdatePropBolt = new JdbcInsertBolt(analyzeConnectionProvider, updatePropMapper)
-                    .withInsertQuery("update property set propertyId=?,status='ready' where platform=? and property=?");
+                    .withInsertQuery("update property set propertyId=?,status='ready',modifiedOn=now() where platform=? and property=?");
             	
             //3.2，将propertyId更新到value记录
             List<Column> valueSchemaColumns = Lists.newArrayList(
@@ -79,7 +79,7 @@ public class CheckPropertyId extends AbstractTopology {
             		new Column("name", Types.VARCHAR));
             JdbcMapper updateValueMapper = new SimpleJdbcMapper(valueSchemaColumns);
             JdbcInsertBolt jdbcUpdateValueBolt = new JdbcInsertBolt(analyzeConnectionProvider, updateValueMapper)
-                    .withInsertQuery("update `value` set propertyId=? where platform=? and property=?");
+                    .withInsertQuery("update `value` set propertyId=?,modifiedOn=now() where platform=? and property=?");
 
             //装配topology
 	        TopologyBuilder builder = new TopologyBuilder();

@@ -67,7 +67,7 @@ public class CheckCategoryId extends AbstractTopology {
             		new Column("platform", Types.VARCHAR));
             JdbcMapper updatePropertyMapper = new SimpleJdbcMapper(propertySchemaColumns);
             JdbcInsertBolt jdbcUpdatePropertyBolt = new JdbcInsertBolt(analyzeConnectionProvider, updatePropertyMapper)
-                    .withInsertQuery("update property set categoryId=?,mappingName=? where category=? and platform=?");
+                    .withInsertQuery("update property set categoryId=?,mappingName=?,modifiedOn=now() where category=? and platform=?");
             
             //3.2，将id更新到value记录
             List<Column> valueSchemaColumns = Lists.newArrayList(
@@ -77,7 +77,7 @@ public class CheckCategoryId extends AbstractTopology {
             		new Column("platform", Types.VARCHAR));
             JdbcMapper updateValueMapper = new SimpleJdbcMapper(valueSchemaColumns);
             JdbcInsertBolt jdbcUpdateValueBolt = new JdbcInsertBolt(analyzeConnectionProvider, updateValueMapper)
-                    .withInsertQuery("update `value` set categoryId=? where category=? and platform=?");
+                    .withInsertQuery("update `value` set categoryId=?,modifiedOn=now() where category=? and platform=?");
             
             //3.3，根据匹配的categoryIdproperty装载到platform_properties，便于建立属性映射。仅选取props.xxx 属性
             //cid：原始平台目录ID；name：原始属性名称，即props.xxx的xxx部分；source：来源平台

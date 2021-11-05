@@ -29,14 +29,25 @@ public class PropertyIdSpout extends BaseRichSpout implements IRichSpout {
     protected transient JdbcClient jdbcClient;
     protected ConnectionProvider connectionProvider;
     public List<Column> queryParams;
+	//处理尚未映射propertyId的记录。注意：已经有继承属性映射的记录也要更新处理，认为当前目录下的映射属性优先级最高
+    String sql = "select platform,categoryId,property as propName from property where (propertyId is null or (propertyId is not null and isInherit=1)) and categoryId is not null limit 20";
+    
     
     private static final Logger logger = Logger.getLogger(PropertyIdSpout.class);
     
+    //默认检查当前类目的属性映射
     public PropertyIdSpout(ConnectionProvider connectionProvider) {
+        this(connectionProvider,false);
+    }
+    
+    //检查类目的继承属性 映射
+    public PropertyIdSpout(ConnectionProvider connectionProvider,boolean checkInheritProperty) {
         this.isDistributed = true;
         this.connectionProvider = connectionProvider;
         this.queryParams = new ArrayList<Column>();
-        //queryParams.add(new Column("status", status, Types.VARCHAR));
+    	//直接查询所有propertyId为空的记录
+        if(checkInheritProperty)
+        	this.sql = "select platform,categoryId,property as propName from property where propertyId is null and categoryId is not null limit 20";
     }
 
     public boolean isDistributed() {
@@ -59,8 +70,7 @@ public class PropertyIdSpout extends BaseRichSpout implements IRichSpout {
     }
 
     public void nextTuple() {
-        String sql = "select platform,property as propName from property where propertyId is null and categoryId is not null limit 20";
-        logger.debug("try to query candidate properties.[SQL]"+sql+"[query]"+queryParams);
+    	logger.debug("try to query candidate properties.[SQL]"+sql+"[query]"+queryParams);
         List<List<Column>> result = jdbcClient.select(sql,queryParams);
         if (result != null && result.size() != 0) {
             for (List<Column> row : result) {
@@ -87,7 +97,7 @@ public class PropertyIdSpout extends BaseRichSpout implements IRichSpout {
     }
 
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("platform","propName"));
+        declarer.declare(new Fields("platform","categoryId","propName"));
     }
 
     @Override
