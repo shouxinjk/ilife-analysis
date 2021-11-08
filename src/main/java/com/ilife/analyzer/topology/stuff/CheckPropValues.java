@@ -39,8 +39,8 @@ import com.ilife.analyzer.topology.AbstractTopology;
  * 本任务内仅关注指定categoryId下的属性，不关注从上级目录继承的属性
  * 
  * 处理逻辑：
- * 1，从分析库 value 表内读取状态为pending、且propertyId不为空的记录。如果记录为0 ，则统一更新由propertyId的记录状态为pending，开启下一轮分析
- * 2，将对应数据写入分析库 ope_performance 表内。根据 propertyId、value进行唯一性校验
+ * 1，从分析库 value 表内读取状态为pending、且categoryId、propertyId不为空的记录。如果记录为0 ，则统一更新由propertyId的记录状态为pending，开启下一轮分析
+ * 2，将对应数据写入分析库 ope_performance 表内。根据 categoryId、propertyId、value进行唯一性校验
  *
  */
 public class CheckPropValues extends AbstractTopology {
@@ -58,12 +58,13 @@ public class CheckPropValues extends AbstractTopology {
             //注意：采用insert on duplicate key方式，如果重复则只更新时间戳。唯一性标记为propertyId、value值
             List<Column> bizPerformanceColumns = Lists.newArrayList(
             		new Column("id", Types.VARCHAR),
+            		new Column("categoryId", Types.VARCHAR),
             		new Column("propertyId", Types.VARCHAR),
             		new Column("value", Types.VARCHAR));
             JdbcMapper insertPerformnceMapper = new SimpleJdbcMapper(bizPerformanceColumns);
             JdbcInsertBolt jdbcUpdateBolt = new JdbcInsertBolt(businessConnectionProvider, insertPerformnceMapper)
-                    .withInsertQuery("insert into ope_performance(id,measure_id,original_value,create_date,update_date) "
-                    		+ "values(?,?,?,now(),now()) on duplicate key update update_date=now()");	
+                    .withInsertQuery("insert into ope_performance(id,category_id,measure_id,original_value,create_date,update_date) "
+                    		+ "values(?,?,?,?,now(),now()) on duplicate key update update_date=now()");	
             
             //装配topology
 	        TopologyBuilder builder = new TopologyBuilder();

@@ -59,7 +59,10 @@ public class PropValuesSpout extends BaseRichSpout implements IRichSpout {
     }
 
     public void nextTuple() {
-        String sql = "select distinct propertyId,`value`,md5(concat(propertyId,`value`)) as id from `value` where status='pending' and propertyId is not null and `value` is not null limit 20";
+        String sql = "select distinct categoryId,propertyId,`value`,md5(concat(categoryId,propertyId,`value`)) as id "
+        		+ "from `value` "
+        		+ "where status='pending' and categoryId is not null and propertyId is not null and `value` is not null "
+        		+ "limit 20";
         logger.debug("try to query pending values.[SQL]"+sql+"[query]"+queryParams);
         List<List<Column>> result = jdbcClient.select(sql,queryParams);
         if (result != null && result.size() != 0) {
@@ -72,7 +75,7 @@ public class PropValuesSpout extends BaseRichSpout implements IRichSpout {
                 this.collector.emit(values);
             }
         }else {//do nothing
-        		logger.info("none record has propertyId!=null && status='pending'.");
+        		logger.info("none record has categoryId!=null && propertyId!=null && status='pending'.");
         }
         Thread.yield();
     }
@@ -87,7 +90,7 @@ public class PropValuesSpout extends BaseRichSpout implements IRichSpout {
     }
 
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("propertyId","value","id"));
+        declarer.declare(new Fields("categoryId","propertyId","value","id"));
     }
 
     @Override
