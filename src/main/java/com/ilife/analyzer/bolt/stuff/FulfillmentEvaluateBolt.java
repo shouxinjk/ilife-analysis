@@ -167,7 +167,7 @@ public class FulfillmentEvaluateBolt extends AbstractArangoBolt {
 		doc.getProperties().put("status", status);//设置状态
 		Map<String,Object> timestamp = Maps.newHashMap();
 		timestamp.put("satisify", new Date());
-		timestamp.put("index", new Date());
+//		timestamp.put("index", new Date());
 		doc.getProperties().put("timestamp", timestamp);//设置状态
 		DocumentUpdateOptions options = new DocumentUpdateOptions();
 		options.keepNull(false);//设置keepNull为false

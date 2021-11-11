@@ -31,8 +31,12 @@ import com.ilife.analyzer.spout.stuff.PropertySpout;
 import com.ilife.analyzer.topology.AbstractTopology;
 
 /**
- * @author alexchew
- * 归一化处理。直接查询key-value数据库，根据category、property、value查询标注库是否已经有标注记录，如果有则使用标注值填写归一化值
+ * @deprecated
+ * 
+ * 当前归一化已经通过preNorm及norm分别完成。归一化完成后将直接更新property及value 的marked_value与score
+ * 
+ * 是赋值操作。在归一化计算完成后，将计算结果从value更新到property。即：将item无关的数值，更新到item相关的属性表
+ * 直接查询key-value数据库，根据category、property、value查询标注库是否已经有标注记录，如果有则使用标注值填写归一化值
  * 1，读取pending状态的property记录
  * 2，读取对应的value记录
  * 3，将对应的归一化rank、value写入property记录，并更新状态

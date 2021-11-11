@@ -32,6 +32,7 @@ import groovy.lang.GroovyShell;
 
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -273,15 +274,29 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
     }
     
     private void syncScore(String itemKey,String type, double score) {
-    		//执行数据更新
+    	//执行数据更新
 		BaseDocument doc = new BaseDocument();
 		doc.setKey(itemKey);
 
-		//Map<String,Object> evaluate = new HashMap<String,Object>();
-		//evaluate.put(type, score);
-		//doc.getProperties().put("evaluate", evaluate);
-		doc.getProperties().put(type, score);//直接写入属性
-		doc.getProperties().put("status", "pending");//更改状态再次索引
+		//主观评价维度更新
+		Map<String,Object> evaluate = new HashMap<String,Object>();
+		evaluate.put(type, score);
+		if("abcde".indexOf(type)>=0)
+			doc.getProperties().put("performance", evaluate);
+		else
+			doc.getProperties().put("cost", evaluate);
+		
+		//状态更新
+		Map<String,Object> status = new HashMap<String,Object>();
+		status.put("evaluate", "ready");
+		status.put("index", "pending");//更改状态再次索引
+		doc.getProperties().put("status", status);
+		
+		//时间戳更新
+		Map<String,Object> timestamp = new HashMap<String,Object>();
+		timestamp.put("evaluate", new Date());
+		doc.getProperties().put("timestamp", timestamp);
+
 		arangoClient.update(collection, doc.getKey(), doc);    	
     }
     
@@ -290,12 +305,22 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
 		BaseDocument doc = new BaseDocument();
 		doc.setKey(itemKey);
 	
-		//Map<String,Object> evaluate = new HashMap<String,Object>();
-		//evaluate.put(type, text);
-		//doc.getProperties().put("evaluate", evaluate);
-		doc.getProperties().put(type, text);//直接写入属性
-		doc.getProperties().put("status", "pending");//更改状态再次索引
+		//主观评价维度更新
+		Map<String,Object> evaluate = new HashMap<String,Object>();
+		evaluate.put(type, text);
+		doc.getProperties().put("style", evaluate);//指定到偏好设置
 		
+		//状态更新
+		Map<String,Object> status = new HashMap<String,Object>();
+		status.put("evaluate", "ready");
+		status.put("index", "pending");//更改状态再次索引
+		doc.getProperties().put("status", status);
+		
+		//时间戳更新
+		Map<String,Object> timestamp = new HashMap<String,Object>();
+		timestamp.put("evaluate", new Date());
+		doc.getProperties().put("timestamp", timestamp);
+
 		arangoClient.update(collection, doc.getKey(), doc);    	
 	}
 

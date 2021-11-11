@@ -121,8 +121,8 @@ public class JsonParseBolt extends BaseRichBolt {
 	    			List<Object> list = (List<Object>)value;
 	    			String strValue = "";
 	    			for(Object obj:list)
-	    				strValue += " "+obj;
-	    			values.add(strValue.trim());
+	    				strValue += ","+obj;
+	    			values.add(strValue.trim().substring(1));//去掉第一个分隔符
 	    		}else
 	    			values.add(""+value);
 	    		//添加固定字段，如category等

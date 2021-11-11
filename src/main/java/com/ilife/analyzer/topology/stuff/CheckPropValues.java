@@ -40,7 +40,7 @@ import com.ilife.analyzer.topology.AbstractTopology;
  * 
  * 处理逻辑：
  * 1，从分析库 value 表内读取状态为pending、且categoryId、propertyId不为空的记录。如果记录为0 ，则统一更新由propertyId的记录状态为pending，开启下一轮分析
- * 2，将对应数据写入分析库 ope_performance 表内。根据 categoryId、propertyId、value进行唯一性校验
+ * 2，将对应数据写入分析库 ope_performance 表内。根据 categoryId、propertyId、value进行唯一性校验。注意：如果是多值，则需要打散后写入
  *
  */
 public class CheckPropValues extends AbstractTopology {

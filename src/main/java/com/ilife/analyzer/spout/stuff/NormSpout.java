@@ -18,25 +18,32 @@ import java.sql.Types;
 import java.util.*;
 
 /**
- * 从分析库 value 表内查询得到propertyId不为空，且状态为pending的proeprty记录
- * @author alexchew
+ * logx归一化
+ * 
+ * 获取待处理logx归一化属性列表。返回待处理 categoryId、propertyId列表
  *
  */
-public class PropValuesSpout extends BaseRichSpout implements IRichSpout {
+public class NormSpout extends BaseRichSpout implements IRichSpout {
     boolean isDistributed;
     SpoutOutputCollector collector;
     Integer queryTimeoutSecs;
     protected transient JdbcClient jdbcClient;
     protected ConnectionProvider connectionProvider;
     public List<Column> queryParams;
+    String normalize_type = "logx";//默认归一化类型为对数归一化
     
-    private static final Logger logger = Logger.getLogger(PropValuesSpout.class);
+    private static final Logger logger = Logger.getLogger(NormSpout.class);
     
-    public PropValuesSpout(ConnectionProvider connectionProvider) {
+    public NormSpout(ConnectionProvider connectionProvider) {
+        this(connectionProvider,"logx");
+    }
+    
+    public NormSpout(ConnectionProvider connectionProvider,String normalizeType) {
         this.isDistributed = true;
         this.connectionProvider = connectionProvider;
         this.queryParams = new ArrayList<Column>();
-        //queryParams.add(new Column("status", status, Types.VARCHAR));
+        this.normalize_type = normalizeType;
+//        queryParams.add(new Column("status", status, Types.VARCHAR));
     }
 
     public boolean isDistributed() {
@@ -58,29 +65,14 @@ public class PropValuesSpout extends BaseRichSpout implements IRichSpout {
 	    	connectionProvider.cleanup();
     }
 
-    //查询待处理数值，如果是多个值则按照逗号分隔，分解为多条记录
-    /**
-select distinct a.categoryId,a.propertyId,substring_index(substring_index(a.`value`,',',b.help_topic_id+1),',',-1) as `value`,
-md5(concat(a.categoryId,a.propertyId,substring_index(substring_index(a.`value`,',',b.help_topic_id+1),',',-1))) as id
-from  ilife_analysis.`value` a
-join   mysql.help_topic b on b.help_topic_id < (length(a.`value`) - length(replace(a.`value`,',',''))+1) 
-where a.property = 'props.主要卖点' and a.status='pending' and a.categoryId is not null and a.propertyId is not null and a.`value` is not null
-     */
     public void nextTuple() {
-    	/**
-        String sql = "select distinct categoryId,propertyId,`value`,md5(concat(categoryId,propertyId,`value`)) as id "
-        		+ "from `value` "
-        		+ "where status='pending' and categoryId is not null and propertyId is not null and `value` is not null "
-        		+ "limit 20";
-        //**/
-    	//注意：在转换为行时引用mysql.help_topic表，需要授权select权限
-    	//grant select on mysql.help_topic to ilife identified by "ilife"
-    	String sql = "select distinct a.categoryId,a.propertyId,substring_index(substring_index(a.`value`,',',b.help_topic_id+1),',',-1) as `value`, "
-    			+ "md5(concat(a.categoryId,a.propertyId,substring_index(substring_index(a.`value`,',',b.help_topic_id+1),',',-1))) as id "
-    			+ "from  ilife_analysis.`value` a "
-    			+ "join  mysql.help_topic b on b.help_topic_id < (length(a.`value`) - length(replace(a.`value`,',',''))+1) "
-    			+ "where a.status='pending' and a.categoryId is not null and a.propertyId is not null and a.`value` is not null";
-        logger.debug("try to query pending values.[SQL]"+sql+"[query]"+queryParams);
+        String sql = "select distinct p.category_id as categoryId,p.measure_id as propertyId "
+        		+ "from ope_performance p "
+        		+ "left join mod_measure m on m.id = p.measure_id "
+        		+ "where m.normalize_type='"+ normalize_type +"' "
+        		+ "order by p.update_date "
+        		+ "limit 10";
+        logger.debug("try to query candidate properties.[SQL]"+sql+"[query]"+queryParams);
         List<List<Column>> result = jdbcClient.select(sql,queryParams);
         if (result != null && result.size() != 0) {
             for (List<Column> row : result) {
@@ -91,8 +83,8 @@ where a.property = 'props.主要卖点' and a.status='pending' and a.categoryId 
                 }
                 this.collector.emit(values);
             }
-        }else {//do nothing
-        		logger.info("none record has categoryId!=null && propertyId!=null && status='pending'.");
+        }else {//如果没有待处理记录
+        	//do nothing
         }
         Thread.yield();
     }
@@ -107,7 +99,7 @@ where a.property = 'props.主要卖点' and a.status='pending' and a.categoryId 
     }
 
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("categoryId","propertyId","value","id"));
+        declarer.declare(new Fields("categoryId","propertyId"));
     }
 
     @Override

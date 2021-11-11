@@ -18,11 +18,18 @@ import java.sql.Types;
 import java.util.*;
 
 /**
- * 从分析库 value 表内查询得到propertyId不为空，且状态为pending的proeprty记录
- * @author alexchew
+ * 从ilife.ope_performance及ilife.mod_measure读取待根据引用补充标注值的记录
+ * 
+ * SQL：
+	SELECT p.id as id,p.category_id as categoryId,p.measure_id as propertyId,
+	p.original_value as `value`,m.auto_label_category as referCategory,m.control_value as score 
+	FROM ope_performance p 
+	left join mod_measure m on p.measure_id=m.id 
+	where m.auto_label_type='refer' and m.auto_label_category is not null
+	order by p.marked_value,p.update_date limit 100
  *
  */
-public class PropValuesSpout extends BaseRichSpout implements IRichSpout {
+public class PreNormReferSpout extends BaseRichSpout implements IRichSpout {
     boolean isDistributed;
     SpoutOutputCollector collector;
     Integer queryTimeoutSecs;
@@ -30,13 +37,17 @@ public class PropValuesSpout extends BaseRichSpout implements IRichSpout {
     protected ConnectionProvider connectionProvider;
     public List<Column> queryParams;
     
-    private static final Logger logger = Logger.getLogger(PropValuesSpout.class);
+    private static final Logger logger = Logger.getLogger(PreNormReferSpout.class);
     
-    public PropValuesSpout(ConnectionProvider connectionProvider) {
+    public PreNormReferSpout(ConnectionProvider connectionProvider) {
+        this(connectionProvider,"pending");
+    }
+    
+    public PreNormReferSpout(ConnectionProvider connectionProvider,String status) {
         this.isDistributed = true;
         this.connectionProvider = connectionProvider;
         this.queryParams = new ArrayList<Column>();
-        //queryParams.add(new Column("status", status, Types.VARCHAR));
+//        queryParams.add(new Column("status", status, Types.VARCHAR));
     }
 
     public boolean isDistributed() {
@@ -58,29 +69,15 @@ public class PropValuesSpout extends BaseRichSpout implements IRichSpout {
 	    	connectionProvider.cleanup();
     }
 
-    //查询待处理数值，如果是多个值则按照逗号分隔，分解为多条记录
-    /**
-select distinct a.categoryId,a.propertyId,substring_index(substring_index(a.`value`,',',b.help_topic_id+1),',',-1) as `value`,
-md5(concat(a.categoryId,a.propertyId,substring_index(substring_index(a.`value`,',',b.help_topic_id+1),',',-1))) as id
-from  ilife_analysis.`value` a
-join   mysql.help_topic b on b.help_topic_id < (length(a.`value`) - length(replace(a.`value`,',',''))+1) 
-where a.property = 'props.主要卖点' and a.status='pending' and a.categoryId is not null and a.propertyId is not null and a.`value` is not null
-     */
     public void nextTuple() {
-    	/**
-        String sql = "select distinct categoryId,propertyId,`value`,md5(concat(categoryId,propertyId,`value`)) as id "
-        		+ "from `value` "
-        		+ "where status='pending' and categoryId is not null and propertyId is not null and `value` is not null "
-        		+ "limit 20";
-        //**/
-    	//注意：在转换为行时引用mysql.help_topic表，需要授权select权限
-    	//grant select on mysql.help_topic to ilife identified by "ilife"
-    	String sql = "select distinct a.categoryId,a.propertyId,substring_index(substring_index(a.`value`,',',b.help_topic_id+1),',',-1) as `value`, "
-    			+ "md5(concat(a.categoryId,a.propertyId,substring_index(substring_index(a.`value`,',',b.help_topic_id+1),',',-1))) as id "
-    			+ "from  ilife_analysis.`value` a "
-    			+ "join  mysql.help_topic b on b.help_topic_id < (length(a.`value`) - length(replace(a.`value`,',',''))+1) "
-    			+ "where a.status='pending' and a.categoryId is not null and a.propertyId is not null and a.`value` is not null";
-        logger.debug("try to query pending values.[SQL]"+sql+"[query]"+queryParams);
+    	//其中score为属性定义上的默认值。必须填值，否则可能导致由于引用的对象尚未入库导致阻塞
+        String sql = "SELECT p.id as id,p.category_id as categoryId,p.measure_id as propertyId,"
+        		+ "	p.original_value as `value`,m.auto_label_category as referCategory,m.default_score as score "
+        		+ "	FROM ope_performance p "
+        		+ "	left join mod_measure m on p.measure_id=m.id "
+        		+ "	where m.auto_label_type='refer' and m.auto_label_category is not null"
+        		+ "	order by p.marked_value,p.update_date limit 100";
+        logger.debug("try to query candidate properties.[SQL]"+sql+"[query]"+queryParams);
         List<List<Column>> result = jdbcClient.select(sql,queryParams);
         if (result != null && result.size() != 0) {
             for (List<Column> row : result) {
@@ -91,8 +88,8 @@ where a.property = 'props.主要卖点' and a.status='pending' and a.categoryId 
                 }
                 this.collector.emit(values);
             }
-        }else {//do nothing
-        		logger.info("none record has categoryId!=null && propertyId!=null && status='pending'.");
+        }else {//如果没有待处理记录
+        	//do nothing
         }
         Thread.yield();
     }
@@ -107,7 +104,7 @@ where a.property = 'props.主要卖点' and a.status='pending' and a.categoryId 
     }
 
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("categoryId","propertyId","value","id"));
+        declarer.declare(new Fields("id","categoryId","propertyId","value","referCategory","score"));
     }
 
     @Override

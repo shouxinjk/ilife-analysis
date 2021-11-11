@@ -93,11 +93,13 @@ public class CreateMeasureTaskBolt extends BaseRichBolt {
 	    	//查询measure-measure记录
     		//1，查询业务库得到measure-measure记录
         	//select dim.parent_id as parent,dim.id as dimension, dim.weight as weight,dim.parent_ids as depth from mod_category cat,mod_item_dimension dim where cat.name=? and cat.id=dim.category
-        		//2，写入分析库
+        	//2，写入分析库
         	//insert ignore into measure (itemKey,parent,dimension,weight,status,priority,createdOn,modifiedOn) values()
-        		String sqlQuery = "select dim.parent_id as parent,dim.id as dimension, dim.weight as weight,dim.parent_ids as depth from mod_item_category cat,mod_item_dimension dim where cat.name=? and cat.id=dim.category";
+        	String sqlQuery = "select dim.parent_id as parent,dim.id as dimension, dim.weight as weight,dim.parent_ids as depth,if(length(dim.parent_ids) - length(REPLACE (dim.parent_ids, ',', ''))=3,1,0) as featured "
+        			+ "from mod_item_category cat,mod_item_dimension dim "
+        			+ "where cat.name=? and cat.id=dim.category";
             logger.info("try to query pending measure-dimension.[SQL]"+sqlQuery+"[param]"+queryParams);
-            String sqlInsert = "insert ignore into measure (itemKey,parent,dimension,weight,status,priority,revision,createdOn,modifiedOn) values(?,?,?,?,'pending',?,1,now(),now())";
+            String sqlInsert = "insert ignore into measure (itemKey,parent,dimension,weight,status,featured,priority,revision,createdOn,modifiedOn) values(?,?,?,?,'pending',?,?,1,now(),now())";
             List<List<Column>> items = new ArrayList<List<Column>>();
             List<List<Column>> result = jdbcClientBiz.select(sqlQuery,queryParams);
             if (result != null && result.size() != 0) {
@@ -116,12 +118,12 @@ public class CreateMeasureTaskBolt extends BaseRichBolt {
                 		item.add(new Column("priority",priority,Types.INTEGER));//priority:手动设置为900
                 		items.add(item);
                 }
-    	    		//写入分析库
-            logger.info("try to insert pending measure-dimension tasks.[SQL]"+sqlInsert+"[items]"+items);
-    	    		jdbcClientAnalyze.executeInsertQuery(sqlInsert, items);	    		
-        }else {//没有配置measure-measure的情况：do nothing
-        		logger.debug("no more measure-dimension tasks");
-        }  
+	    	    //写入分析库
+	            logger.info("try to insert pending measure-dimension tasks.[SQL]"+sqlInsert+"[items]"+items);
+	    	    jdbcClientAnalyze.executeInsertQuery(sqlInsert, items);	    		
+	        }else {//没有配置measure-measure的情况：do nothing
+	        		logger.debug("no more measure-dimension tasks");
+	        }  
         
         //查询measure-property记录
     		//1，查询业务库得到measure-property记录

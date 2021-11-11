@@ -42,19 +42,19 @@ import com.ilife.analyzer.topology.AbstractTopology;
  *
  */
 public class EvaluateByMeasure extends AbstractTopology {
-		String database = "forge";
-		String collection = "stuff";
+		String database = "sea";
+		String collection = "my_stuff";
 	    public static void main(String[] args) throws Exception {
 	        new EvaluateByMeasure().execute(args);
 	    }
 
 	    @Override
 	    public StormTopology getTopology() {
-	    		//1，读取叶子节点，返回：id，dimension
-	    		EvaluateMeasureSpout leaves = new EvaluateMeasureSpout(analyzeConnectionProvider);
-	    		
-	    		//2，DynamicEvaluateBolt：分别评价各个主观维度的叶子节点，包括score及text计算
-	    		DynamicEvaluateBolt dynamicEvaluateBolt = new DynamicEvaluateBolt(props,database,collection,businessConnectionProvider,analyzeConnectionProvider);
+    		//1，读取叶子节点，返回：id，dimension
+    		EvaluateMeasureSpout leaves = new EvaluateMeasureSpout(analyzeConnectionProvider);
+    		
+    		//2，DynamicEvaluateBolt：分别评价各个主观维度的叶子节点，包括score及text计算
+    		DynamicEvaluateBolt dynamicEvaluateBolt = new DynamicEvaluateBolt(props,database,collection,businessConnectionProvider,analyzeConnectionProvider);
 
             String nodeSpout = "evaluate_measure_spout";
             String nodeCalcBolt = "evaluate_measure_clac_bolt";
