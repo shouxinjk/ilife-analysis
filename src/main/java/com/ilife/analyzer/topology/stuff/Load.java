@@ -120,8 +120,8 @@ public class Load extends AbstractTopology {
 	        builder.setSpout(spout, arangoSpout, 1);
 	        builder.setBolt(saveToArangoBolt, insertBolt, 1).shuffleGrouping(spout);
 	        builder.setBolt(parseBolt, jsonParser, 1).shuffleGrouping(spout);
-	        builder.setBolt(insertPropertyBolt, jdbcInsertPropertyBolt, 5).shuffleGrouping(parseBolt);
-	        builder.setBolt(insertValueBolt, jdbcInsertValueBolt, 5).shuffleGrouping(parseBolt);
+	        builder.setBolt(insertPropertyBolt, jdbcInsertPropertyBolt, 1).shuffleGrouping(parseBolt);
+	        builder.setBolt(insertValueBolt, jdbcInsertValueBolt, 1).shuffleGrouping(parseBolt);
 	        builder.setBolt(createMeasureTasksBolt, createMeasureTaskBolt, 1).shuffleGrouping(spout);
 	        builder.setBolt(createEvaluateTasksBolt, createEvaluateTaskBolt, 1).shuffleGrouping(spout);
 	        return builder.createTopology();

@@ -85,7 +85,7 @@ public class MeasureByDimension extends AbstractTopology {
         String nodeSyncScore = "measure_dimension_sync_score";
         TopologyBuilder builder = new TopologyBuilder();
         builder.setSpout(nodeSpout, leaves, 1);
-        builder.setBolt(nodeCalcScore, jdbcFindDimensionsBolt, 5).shuffleGrouping(nodeSpout);
+        builder.setBolt(nodeCalcScore, jdbcFindDimensionsBolt, 1).shuffleGrouping(nodeSpout);
         builder.setBolt(nodeUpdateScore, jdbcUpdateMeasureBolt, 1).shuffleGrouping(nodeCalcScore);
         builder.setBolt(nodeSyncScore, dynamicMeasureBolt, 1).shuffleGrouping(nodeCalcScore);
         return builder.createTopology();

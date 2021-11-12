@@ -60,7 +60,7 @@ public class EvaluateByMeasure extends AbstractTopology {
             String nodeCalcBolt = "evaluate_measure_clac_bolt";
 	        TopologyBuilder builder = new TopologyBuilder();
 	        builder.setSpout(nodeSpout, leaves, 1);
-	        builder.setBolt(nodeCalcBolt, dynamicEvaluateBolt, 5).shuffleGrouping(nodeSpout);
+	        builder.setBolt(nodeCalcBolt, dynamicEvaluateBolt, 1).shuffleGrouping(nodeSpout);
 	        return builder.createTopology();
 	    }
 }

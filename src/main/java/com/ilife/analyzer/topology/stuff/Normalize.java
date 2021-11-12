@@ -84,7 +84,7 @@ public class Normalize extends AbstractTopology {
             String updateProperyBolt = "normalize_update_property_score";
 	        TopologyBuilder builder = new TopologyBuilder();
 	        builder.setSpout(spout, propertySpout, 1);
-	        builder.setBolt(findScoreBolt, jdbcFindScoreBolt, 5).shuffleGrouping(spout);
+	        builder.setBolt(findScoreBolt, jdbcFindScoreBolt, 1).shuffleGrouping(spout);
 	        builder.setBolt(updateProperyBolt, jdbcUpdateBolt, 1).shuffleGrouping(findScoreBolt);
 	        return builder.createTopology();
 	    }

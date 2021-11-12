@@ -81,7 +81,7 @@ public class EvaluateByDimension extends AbstractTopology {
             String nodeUpdateScore = "evaluate_dimension_update_score";
 	        TopologyBuilder builder = new TopologyBuilder();
 	        builder.setSpout(nodeSpout, nodes, 1);
-	        builder.setBolt(nodeCalcScore, jdbcFindDimensionsBolt, 5).shuffleGrouping(nodeSpout);
+	        builder.setBolt(nodeCalcScore, jdbcFindDimensionsBolt, 1).shuffleGrouping(nodeSpout);
 	        builder.setBolt(nodeUpdateScore, jdbcUpdateEvaluateBolt, 1).shuffleGrouping(nodeCalcScore);
 	        return builder.createTopology();
 	    }
