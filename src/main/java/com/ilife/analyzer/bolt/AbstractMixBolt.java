@@ -78,7 +78,7 @@ public abstract class AbstractMixBolt extends BaseRichBolt {
 
     @Override
     public void cleanup() {
-		this.arangoClient.close();
-		connectionProvider.cleanup();
+//		this.arangoClient.close();
+//		connectionProvider.cleanup();
     }
 }

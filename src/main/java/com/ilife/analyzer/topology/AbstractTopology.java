@@ -52,15 +52,15 @@ public abstract class AbstractTopology {
     protected static final String JDBC_CONF = "jdbc.conf";
     
     public void execute(String[] args) throws Exception {
-    		//here we load configurations from properties file
+		//here we load configurations from properties file
         props.load(AbstractTopology.class.getClassLoader().getResourceAsStream("ilife.properties"));
         
         //prepare storm configuration
         Config config = new Config();
         if("debug".equalsIgnoreCase(props.getProperty("common.mode", "production")))
-        		config.setDebug(true); 
+    		config.setDebug(true); 
         else
-        		config.setDebug(false);
+    		config.setDebug(false);
         
         //prepare JDBC configuration
         prepareConnectionProvider("business");//业务数据库
@@ -91,30 +91,36 @@ public abstract class AbstractTopology {
     
     public void prepareConnectionProvider(String type) {
         //prepare JDBC configuration
-        Map jdbcConfigMap = Maps.newHashMap();
+        Map<String,Object> jdbcConfigMap = Maps.newHashMap();
         jdbcConfigMap.put("dataSourceClassName", props.getProperty("mysql.TYPE.dataSource.className".replace("TYPE", type)));//com.mysql.jdbc.jdbc2.optional.MysqlDataSource
         jdbcConfigMap.put("dataSource.url", props.getProperty("mysql.TYPE.url".replace("TYPE", type)));//jdbc:mysql://localhost/test
         jdbcConfigMap.put("dataSource.user", props.getProperty("mysql.TYPE.user".replace("TYPE", type)));//root
         jdbcConfigMap.put("dataSource.password", props.getProperty("mysql.TYPE.password".replace("TYPE", type)));//password
-        try{
-	        jdbcConfigMap.put("minimumIdle", Integer.parseInt(props.getProperty("mysql.minimumIdle")));//minIdle
-        }catch(Exception ex){//如果未设置则使用默认值，与maximumPoolSize相同，为固定大小
-        		//jdbcConfigMap.put("minimumIdle", 2);
-	        logger.error("Cannot read minimumIdle from properties.",ex);
-        }
-        try{
-	        jdbcConfigMap.put("maximumPoolSize", Integer.parseInt(props.getProperty("mysql.maximumPoolSize")));//maxPoolSize
-        }catch(Exception ex){
-	        	jdbcConfigMap.put("maximumPoolSize", 5);
-	        	logger.error("Cannot read maximumPoolSize from properties.",ex);
-        }
-  //config.put(JDBC_CONF, jdbcConfigMap); 
+        
+//        setDataSourceConfig("minimumIdle",5,jdbcConfigMap);
+//        setDataSourceConfig("maximumPoolSize",50,jdbcConfigMap);
+        setDataSourceConfig("idleTimeout",600000,jdbcConfigMap);
+        setDataSourceConfig("maxLifetime",18000000,jdbcConfigMap);
+        setDataSourceConfig("connectionTimeout",120000,jdbcConfigMap);
+//        setDataSourceConfig("validationTimeout",3000,jdbcConfigMap);
+//        setDataSourceConfig("leakDetectionThreshold",5000,jdbcConfigMap);
+         
         if("business".equalsIgnoreCase(type))
-        		this.businessConnectionProvider = new HikariCPConnectionProvider(jdbcConfigMap); 
+    		this.businessConnectionProvider = new HikariCPConnectionProvider(jdbcConfigMap); 
         else if("analyze".equalsIgnoreCase(type))
-    			this.analyzeConnectionProvider = new HikariCPConnectionProvider(jdbcConfigMap); 
+			this.analyzeConnectionProvider = new HikariCPConnectionProvider(jdbcConfigMap); 
         else
-        		logger.error("Wrong connection type. TYPE must be business or analyze.");
+    		logger.error("Wrong connection type. TYPE must be business or analyze.");
+        
+    }
+    
+    private void setDataSourceConfig(String key,int value, Map<String,Object> jdbcConfigMap) {
+        try{
+	        jdbcConfigMap.put(key, Integer.parseInt(props.getProperty("mysql."+key)));
+        }catch(Exception ex){
+        	jdbcConfigMap.put(key, value);
+        	logger.debug("Cannot read from properties.[key]"+key,ex);
+        }
     }
 
     public abstract StormTopology getTopology();

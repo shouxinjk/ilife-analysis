@@ -49,7 +49,7 @@ import com.ilife.analyzer.topology.AbstractTopology;
  */
 public class Load extends AbstractTopology {
 	    String arango_harvest = "sea";//采集库，存放原始采集数据
-	    String arango_analyze = "forge";//分析库，存放分析结果
+//	    String arango_analyze = "forge";//分析库，存放分析结果
 	    
 	    public static void main(String[] args) throws Exception {
 	        new Load().execute(args);
@@ -58,17 +58,22 @@ public class Load extends AbstractTopology {
 	    @Override
 	    public StormTopology getTopology() {
 	    		//1，ArangoSpout：从arangodb读取状态为pending的初始数据，读取后即更新状态为ready
-	    		String query = "FOR doc in my_stuff filter doc.status.load == 'pending' update doc with { status:{load: 'ready'},category:CONCAT_SEPARATOR(' ',doc.category) } in my_stuff limit 10 return NEW";
+	    		String query = "FOR doc in my_stuff "
+	    				+ "filter doc.status.load == 'pending' "
+	    				+ "update doc with { status:{load: 'ready'},category:CONCAT_SEPARATOR(' ',doc.category) } in my_stuff "
+	    				+ "limit 1 "
+	    				+ "return NEW";
 	    		String[] fields = {"_key","_doc","category","source"};
 	    		ArangoSpout arangoSpout = new ArangoSpout(props,arango_harvest)
 	    				.withQuery(query)
 	    				.withFields(fields);
-	    		
+	   
 	    		//2.1，ArangoInsert：组装默认数据后写入分析arangodb数据库
+	    		/*
 	    		String[] insertFields = {"_key","_doc"};
 	    		ArangoMapper mapper = new SimpleArangoMapper(insertFields);
 	    		ArangoInsertBolt insertBolt = new ArangoInsertBolt(props,arango_analyze,"stuff",mapper);
-	    		
+	    		//**/
 	    		//2.2，按照属性打散数据记录写入key-value数据库
 	    		//2.2.1，将json打散为行列数据
 	    		String[] infields = {"_doc","category","_key","source"};
@@ -86,7 +91,7 @@ public class Load extends AbstractTopology {
             JdbcInsertBolt jdbcInsertPropertyBolt = new JdbcInsertBolt(analyzeConnectionProvider, jdbcMapper)
                     .withInsertQuery("insert ignore into property(property,value,category,platform,itemKey,status,createdOn,modifiedOn) "
                     		+ "values (?,?,?,?,?,'pending',now(),now()) on duplicate key update revision=revision+1");//属性表唯一校验规则：category、property、itemKey、value
-            
+//            		.withQueryTimeoutSecs(30); 
             //2.2.3，将属性写入标注数据表：用于归一化任务，收集手动或自动数据标注
             List<Column> columns2 = Lists.newArrayList(
             		new Column("property", Types.VARCHAR),
@@ -95,8 +100,9 @@ public class Load extends AbstractTopology {
             		new Column("category", Types.VARCHAR));
             JdbcMapper jdbcMapper2 = new SimpleJdbcMapper(columns2);
             JdbcInsertBolt jdbcInsertValueBolt = new JdbcInsertBolt(analyzeConnectionProvider, jdbcMapper2)
-                    .withInsertQuery("insert ignore into value(property,value,platform,category,status,revision,createdOn,modifiedOn) "
-                    		+ "values (?,?,?,?,'pending',1,now(),now())");//标注数据表唯一性校验规则：category、property、value。pending状态表示尚未经过标注，只是默认值            
+                    .withInsertQuery("insert ignore into `value`(property,value,platform,category,status,revision,createdOn,modifiedOn) "
+                    		+ "values (?,?,?,?,'pending',1,now(),now())");//标注数据表唯一性校验规则：category、property、value。pending状态表示尚未经过标注，只是默认值  
+//                    .withQueryTimeoutSecs(30);          
            
             //2.2.4，写入客观评价任务表：
             //写入measure-property：维度和属性关系。读取对应category的dimension-measure定义，写入分析库
@@ -118,10 +124,10 @@ public class Load extends AbstractTopology {
             String createEvaluateTasksBolt = "load_bolt_create_evaluate_tasks";
 	        TopologyBuilder builder = new TopologyBuilder();
 	        builder.setSpout(spout, arangoSpout, 1);
-	        builder.setBolt(saveToArangoBolt, insertBolt, 1).shuffleGrouping(spout);
+//	        builder.setBolt(saveToArangoBolt, insertBolt, 1).shuffleGrouping(spout);
 	        builder.setBolt(parseBolt, jsonParser, 1).shuffleGrouping(spout);
-	        builder.setBolt(insertPropertyBolt, jdbcInsertPropertyBolt, 1).shuffleGrouping(parseBolt);
-	        builder.setBolt(insertValueBolt, jdbcInsertValueBolt, 1).shuffleGrouping(parseBolt);
+	        builder.setBolt(insertPropertyBolt, jdbcInsertPropertyBolt, 5).shuffleGrouping(parseBolt);
+	        builder.setBolt(insertValueBolt, jdbcInsertValueBolt, 5).shuffleGrouping(parseBolt);
 	        builder.setBolt(createMeasureTasksBolt, createMeasureTaskBolt, 1).shuffleGrouping(spout);
 	        builder.setBolt(createEvaluateTasksBolt, createEvaluateTaskBolt, 1).shuffleGrouping(spout);
 	        return builder.createTopology();

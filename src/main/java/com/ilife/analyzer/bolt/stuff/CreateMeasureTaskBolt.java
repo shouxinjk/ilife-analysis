@@ -32,7 +32,7 @@ import java.util.Properties;
  * 
  * 根据itemKey、Category建立measure-property任务记录，后续进行叶子节点维度评估
  * 1，根据category从业务库内查询dimension-measure记录
- * 2，将itemKey、category、dimension、measure、weight属性关系写入分析库
+ * 2，将itemKey、category、dimName、dimension、measure、weight属性关系写入分析库
  * 3，根据category从业务库内查询dimension-dimension记录
  * 4，将itemKey、category、dimension、dimension、weight属性关系写入分析库
  * 
@@ -95,11 +95,11 @@ public class CreateMeasureTaskBolt extends BaseRichBolt {
         	//select dim.parent_id as parent,dim.id as dimension, dim.weight as weight,dim.parent_ids as depth from mod_category cat,mod_item_dimension dim where cat.name=? and cat.id=dim.category
         	//2，写入分析库
         	//insert ignore into measure (itemKey,parent,dimension,weight,status,priority,createdOn,modifiedOn) values()
-        	String sqlQuery = "select dim.parent_id as parent,dim.id as dimension, dim.weight as weight,dim.parent_ids as depth,if(length(dim.parent_ids) - length(REPLACE (dim.parent_ids, ',', ''))=3,1,0) as featured "
+        	String sqlQuery = "select dim.parent_id as parent,dim.category as category, dim.name as dimName,dim.id as dimension, dim.weight as weight,dim.parent_ids as depth,if(length(dim.parent_ids) - length(REPLACE (dim.parent_ids, ',', ''))=3,1,0) as featured "
         			+ "from mod_item_category cat,mod_item_dimension dim "
         			+ "where cat.name=? and cat.id=dim.category";
             logger.info("try to query pending measure-dimension.[SQL]"+sqlQuery+"[param]"+queryParams);
-            String sqlInsert = "insert ignore into measure (itemKey,parent,dimension,weight,status,featured,priority,revision,createdOn,modifiedOn) values(?,?,?,?,'pending',?,?,1,now(),now())";
+            String sqlInsert = "insert ignore into measure (itemKey,parent,category,dimName,dimension,weight,status,featured,priority,revision,createdOn,modifiedOn) values(?,?,?,?,?,?,'pending',?,?,1,now(),now())";
             List<List<Column>> items = new ArrayList<List<Column>>();
             List<List<Column>> result = jdbcClientBiz.select(sqlQuery,queryParams);
             if (result != null && result.size() != 0) {
@@ -175,8 +175,8 @@ public class CreateMeasureTaskBolt extends BaseRichBolt {
 
     @Override
     public void cleanup() {
-    		connectionProviderBiz.cleanup();
-    		connectionProviderAnalyze.cleanup();
+//    		connectionProviderBiz.cleanup();
+//    		connectionProviderAnalyze.cleanup();
     } 
     
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {

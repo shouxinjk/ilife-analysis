@@ -55,7 +55,7 @@ public class PropValuesSpout extends BaseRichSpout implements IRichSpout {
 
     public void close(){
 	    	//TODO need to check if other bolts will be impacted
-	    	connectionProvider.cleanup();
+//	    	connectionProvider.cleanup();
     }
 
     //查询待处理数值，如果是多个值则按照逗号分隔，分解为多条记录

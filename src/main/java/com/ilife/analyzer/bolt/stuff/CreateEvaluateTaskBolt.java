@@ -110,9 +110,9 @@ public class CreateEvaluateTaskBolt extends BaseRichBolt {
      	//select mod.parent_id as parent,mod.id as evaluation, mod.weight as weight,mod.type as type,mod.parent_ids as depth from mod_category cat,mod_item_evaluation mod where cat.name=? and cat.id=mod.category
      		//2，写入分析库
      	//insert ignore into evaluation (itemKey,parent,evaluation,weight,type,script,status,priority,revision,createdOn,modifiedOn) values()
-    	 String sqlQuery = "select m.parent_id as parent,m.id as evaluation, m.weight as weight,m.type as type,m.script as script,m.parent_ids as depth,cat.id as category,m.featured as featured from mod_item_category cat,mod_item_evaluation m where cat.name=? and cat.id=m.category";
+    	 String sqlQuery = "select m.parent_id as parent,m.id as evaluation, m.weight as weight,m.type as type,m.script as script,m.parent_ids as depth,cat.id as category,m.name as evaluationName,m.featured as featured from mod_item_category cat,mod_item_evaluation m where cat.name=? and cat.id=m.category";
          logger.debug("try to query pending measure-dimension.[SQL]"+sqlQuery);
-         String sqlInsert = "insert ignore into evaluation (itemKey,parent,evaluation,weight,type,script,category,featured,status,priority,revision,createdOn,modifiedOn) values(?,?,?,?,?,?,?,?,'pending',?,1,now(),now())";
+         String sqlInsert = "insert ignore into evaluation (itemKey,parent,evaluation,weight,type,script,category,evaluationName,featured,status,priority,revision,createdOn,modifiedOn) values(?,?,?,?,?,?,?,?,?,'pending',?,1,now(),now())";
          List<List<Column>> items = new ArrayList<List<Column>>();
          List<List<Column>> result = jdbcClientBiz.select(sqlQuery,queryParams);
          if (result != null && result.size() != 0) {
@@ -205,8 +205,8 @@ public class CreateEvaluateTaskBolt extends BaseRichBolt {
 
     @Override
     public void cleanup() {
-    		connectionProviderBiz.cleanup();
-    		connectionProviderAnalyze.cleanup();
+//    		connectionProviderBiz.cleanup();
+//    		connectionProviderAnalyze.cleanup();
     } 
     
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {

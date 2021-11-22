@@ -61,7 +61,7 @@ public class EvaluateDimensionSpout extends BaseRichSpout implements IRichSpout 
 
     public void close(){
 	    	//TODO need to check if other bolts will be impacted
-	    	connectionProvider.cleanup();
+//	    	connectionProvider.cleanup();
     }
 
     public void nextTuple() {

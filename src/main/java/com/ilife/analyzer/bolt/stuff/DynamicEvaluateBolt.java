@@ -50,7 +50,7 @@ public class DynamicEvaluateBolt extends AbstractArangoBolt {
     protected OutputCollector collector;
     
     Integer queryTimeoutSecs;
-    String collection = "forge";
+    String collection = "sea";
     
     protected transient JdbcClient jdbcClientBiz;
     protected transient JdbcClient jdbcClientAnalyze;
