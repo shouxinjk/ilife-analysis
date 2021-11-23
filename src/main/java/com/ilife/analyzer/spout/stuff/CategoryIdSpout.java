@@ -59,15 +59,25 @@ public class CategoryIdSpout extends BaseRichSpout implements IRichSpout {
     }
 
     public void nextTuple() {
-        String sql = "select distinct platform,category from property where categoryId is null and category is not null and category!='' limit 10";//批量处理，一次性处理所有同名记录
+        String sql = "select distinct platform,category from property where categoryId is null and category is not null and category!=''order by revision_category limit 10 ";//批量处理，一次性处理所有同名记录
         logger.debug("try to query candidate properties.[SQL]"+sql+"[query]"+queryParams);
         List<List<Column>> result = jdbcClient.select(sql,queryParams);
         if (result != null && result.size() != 0) {
             for (List<Column> row : result) {
             		logger.debug("got result.[row]"+row);
                 Values values = new Values();
+                String category = "";
+                String platform = "";
                 for(Column column : row) {
                     values.add(column.getVal());
+                    if("platform".equalsIgnoreCase(column.getColumnName()))platform = column.getVal().toString();
+                    if("category".equalsIgnoreCase(column.getColumnName()))category = column.getVal()+"";
+                }
+                //更新category查询次数，即版本。用于数据滚动
+                try{
+                	jdbcClient.executeSql("update property set revision_category=revision_category+1 where platform='"+platform+"' and category='"+category+"'");
+                }catch(Exception ex) {
+                	
                 }
                 this.collector.emit(values);
             }
