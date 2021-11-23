@@ -75,7 +75,7 @@ where a.property = 'props.主要卖点' and a.status='pending' and a.categoryId 
         //**/
     	//注意：在转换为行时引用mysql.help_topic表，需要授权select权限
     	//grant select on mysql.help_topic to ilife identified by "ilife"
-    	String sql = "select distinct a.categoryId,a.propertyId,substring_index(substring_index(a.`value`,',',b.help_topic_id+1),',',-1) as `value`, "
+    	String sql = "select distinct a.categoryId,a.propertyId,a.`value` as orgvalue,substring_index(substring_index(a.`value`,',',b.help_topic_id+1),',',-1) as `value`, "
     			+ "md5(concat(a.categoryId,a.propertyId,substring_index(substring_index(a.`value`,',',b.help_topic_id+1),',',-1))) as id "
     			+ "from  ilife_analysis.`value` a "
     			+ "join  mysql.help_topic b on b.help_topic_id < (length(a.`value`) - length(replace(a.`value`,',',''))+1) "
@@ -106,8 +106,9 @@ where a.property = 'props.主要卖点' and a.status='pending' and a.categoryId 
     	//do nothing
     }
 
+    //orgvalue为分解前的原始值，value为按空格分解后的单值
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
-        declarer.declare(new Fields("categoryId","propertyId","value","id"));
+        declarer.declare(new Fields("categoryId","propertyId","orgvalue","value","id"));
     }
 
     @Override
