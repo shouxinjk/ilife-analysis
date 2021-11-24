@@ -56,6 +56,7 @@ public class CheckPropValues extends AbstractTopology {
     		
     		//2.1，将查询出的value更新写入业务库ope_performance
             //注意：采用insert on duplicate key方式，如果重复则只更新时间戳。唯一性标记为propertyId、value值
+    		//TODO：需要根据property的标注类型，分别将数值写入ope_performance、对应的字典表 
             List<Column> bizPerformanceColumns = Lists.newArrayList(
             		new Column("id", Types.VARCHAR),
             		new Column("categoryId", Types.VARCHAR),

@@ -41,6 +41,8 @@ import java.util.Properties;
 
 /**
  * 
+ * @deprecated
+ * 
  * 将匹配的category写入 my_stuff
  * 更新meta.category字段，同时更新状态及时间戳
  * 
@@ -120,8 +122,8 @@ public class ChangeCategoryBolt extends AbstractArangoBolt {
 
     @Override
     public void cleanup() {
-    		connectionProviderBiz.cleanup();
-    		connectionProviderAnalyze.cleanup();
+//    		connectionProviderBiz.cleanup();
+//    		connectionProviderAnalyze.cleanup();
     } 
     
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {

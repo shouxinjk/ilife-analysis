@@ -20,14 +20,13 @@ import org.apache.storm.jdbc.common.Column;
 import org.apache.storm.jdbc.common.ConnectionProvider;
 import org.apache.storm.jdbc.common.JdbcClient;
 import org.apache.storm.jdbc.mapper.JdbcMapper;
-import org.apache.storm.shade.com.google.common.collect.Maps;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.arangodb.entity.BaseDocument;
-import com.arangodb.model.DocumentUpdateOptions;
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;
+import com.ilife.analyzer.util.Util;
 
 import groovy.lang.Binding;
 import groovy.lang.GroovyShell;
@@ -42,26 +41,25 @@ import java.util.Properties;
 
 /**
  * 
- * 从字典表查询标注值。
- * 
- * 由于preparedStatement不能传递动态表名，此处预先装配表名执行查询
+ * 在装载时，将stuff的属性写入platform_properties，等待建立映射
  * 
  */
-public class LabelByDictBolt extends AbstractArangoBolt {
-    private static final Logger logger = LoggerFactory.getLogger(LabelByDictBolt.class);
+public class InsertPropertyBolt extends AbstractArangoBolt {
+    private static final Logger logger = LoggerFactory.getLogger(InsertPropertyBolt.class);
     protected OutputCollector collector;
     
     Integer queryTimeoutSecs;
+    String database= "sea";
     
     protected transient JdbcClient jdbcClientBiz;
     protected transient JdbcClient jdbcClientAnalyze;
     protected ConnectionProvider connectionProviderBiz;
     protected ConnectionProvider connectionProviderAnalyze;
     
-    String[] inputFields = {"categoryId","propertyId","value","dict","score"};
-    String[] outfields = inputFields;//将数据继续传递：仅修改score值为查询得到的字典值
+    String[] inputFields = {"source","property","category","categoryId","meta.category"};//输入字段：来源、属性名称、原始类目名称、原始类目ID（可能为空）、已经映射后的标准类目ID
+    String[] outfields = inputFields;//将数据继续传递
     
-    public LabelByDictBolt(Properties prop,String database,ConnectionProvider connectionProviderBiz,ConnectionProvider connectionProviderAnalyze) {
+    public InsertPropertyBolt(Properties prop,String database,ConnectionProvider connectionProviderBiz,ConnectionProvider connectionProviderAnalyze) {
     		super(prop,database);
     		this.connectionProviderBiz = connectionProviderBiz;
     		this.connectionProviderAnalyze = connectionProviderAnalyze;
@@ -72,28 +70,39 @@ public class LabelByDictBolt extends AbstractArangoBolt {
         this.collector = collector;
         connectionProviderBiz.prepare();
         connectionProviderAnalyze.prepare();
-
         if(queryTimeoutSecs == null) {
             queryTimeoutSecs = Integer.parseInt(map.get(Config.TOPOLOGY_MESSAGE_TIMEOUT_SECS).toString());
         }
-
-        this.jdbcClientBiz = new JdbcClient(connectionProviderBiz, queryTimeoutSecs);
-        this.jdbcClientAnalyze = new JdbcClient(connectionProviderAnalyze, queryTimeoutSecs);
+//
+//        this.jdbcClientBiz = new JdbcClient(connectionProviderBiz, queryTimeoutSecs);
+//        this.jdbcClientAnalyze = new JdbcClient(connectionProviderAnalyze, queryTimeoutSecs);
         
     }
 
+    /**
+     * 将属性信息写入platform_properties等待标注
+     * 
+     */
     public void execute(Tuple tuple) {
-    	//查询得到字典标注值
-    	double score = findScoreByLabel(tuple);
+    	String itemKey = Util.md5(tuple.getStringByField("source")+tuple.getStringByField("property"));
+    	//查询是否已经存在
+		BaseDocument doc = arangoClient.find("my_stuff", itemKey);
+		if(doc == null) {
+			doc = new BaseDocument();
+			doc.getProperties().put("source", tuple.getStringByField("source"));
+			doc.getProperties().put("category", tuple.getStringByField("category"));//原始类目名称
+			doc.getProperties().put("cid", tuple.getStringByField("categoryId"));//原始类目ID
+			doc.getProperties().put("mappingCategoryId", tuple.getStringByField("meta.category"));//映射的标准类目ID
+			doc.getProperties().put("name", tuple.getStringByField("property"));
+			doc.setKey(itemKey);
+			arangoClient.insert("my_stuff", doc);
+		}
 
-        //将itemKey、category向后传递
+	 	//将itemKey、category向后传递
 		try {
     		Values values = new Values();
     		for(String field:inputFields) {
-    			if("score".equalsIgnoreCase(field)  && score>=0 )//直接替换输入流的score字段：未查到的情况下不影响score值
-    				values.add(score);
-    			else
-    				values.add(tuple.getValueByField(field));
+    			values.add(tuple.getValueByField(field));
     		}
     		this.collector.emit(values);
 	    } catch (Exception e) {
@@ -101,36 +110,10 @@ public class LabelByDictBolt extends AbstractArangoBolt {
 	    }
 	    Thread.yield();
     }
-    
-    /**
-     * 动态组织字典表查询
-     */
-    private double findScoreByLabel(Tuple tuple) {
-    	String sqlQuery = "select ifnull(score,?) as score from _dict_table where label=?";
-    	sqlQuery = sqlQuery.replace("_dict_table", tuple.getStringByField("dict"));
-	    logger.debug("try to query by dict.[SQL]"+sqlQuery);
-	    List<Column> queryParams=new ArrayList<Column>();
-	    queryParams.add(new Column("score",tuple.getValueByField("score"),Types.DOUBLE));//默认值
-	    queryParams.add(new Column("label",tuple.getValueByField("value"),Types.VARCHAR));//标签
-	    List<List<Column>> result = jdbcClientBiz.select(sqlQuery,queryParams);
-	    if (result != null && result.size() > 0) {
-            for (List<Column> row : result) {
-        		for(Column column:row) {//仅返回一个score字段，此处确认
-        			if("score".equalsIgnoreCase(column.getColumnName())) {
-        				return Double.parseDouble(column.getVal().toString());
-        			}
-        		}
-        }	        
-	    }else {//如果没有对应的值：do nothing
-    		logger.debug("Cannot find label from dict");
-	    }
-	    return -1;
-    }
 
     @Override
     public void cleanup() {
-//    		connectionProviderBiz.cleanup();
-//    		connectionProviderAnalyze.cleanup();
+    	
     } 
     
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {

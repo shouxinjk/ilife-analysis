@@ -179,8 +179,8 @@ public class FulfillmentEvaluateBolt extends AbstractArangoBolt {
 
     @Override
     public void cleanup() {
-    		connectionProviderBiz.cleanup();
-    		connectionProviderAnalyze.cleanup();
+//    		connectionProviderBiz.cleanup();
+//    		connectionProviderAnalyze.cleanup();
     } 
     
     public void declareOutputFields(OutputFieldsDeclarer outputFieldsDeclarer) {

@@ -34,6 +34,9 @@ import com.ilife.analyzer.spout.stuff.PropertySpout;
 import com.ilife.analyzer.topology.AbstractTopology;
 
 /**
+ * 
+ * @deprecated
+ * 
  * 根据category名称查询得到映射的categoryId。
  * 
  * 1，从分析库property内读取categoryId为null的记录，返回category、platform
