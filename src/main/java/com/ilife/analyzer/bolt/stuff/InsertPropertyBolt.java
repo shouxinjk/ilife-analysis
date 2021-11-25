@@ -85,8 +85,9 @@ public class InsertPropertyBolt extends AbstractArangoBolt {
      */
     public void execute(Tuple tuple) {
     	String itemKey = Util.md5(tuple.getStringByField("source")+tuple.getStringByField("property"));
+    	logger.debug("try to insert item to platform_categories.",tuple.getValues());
     	//查询是否已经存在
-		BaseDocument doc = arangoClient.find("my_stuff", itemKey);
+		BaseDocument doc = arangoClient.find("platform_categories", itemKey);
 		if(doc == null) {
 			doc = new BaseDocument();
 			doc.getProperties().put("source", tuple.getStringByField("source"));
@@ -95,7 +96,8 @@ public class InsertPropertyBolt extends AbstractArangoBolt {
 			doc.getProperties().put("mappingCategoryId", tuple.getStringByField("meta.category"));//映射的标准类目ID
 			doc.getProperties().put("name", tuple.getStringByField("property"));
 			doc.setKey(itemKey);
-			arangoClient.insert("my_stuff", doc);
+			logger.debug("try to insert item to platform_categories.[properties]",doc.getProperties());
+			arangoClient.insert("platform_categories", doc);
 		}
 
 	 	//将itemKey、category向后传递

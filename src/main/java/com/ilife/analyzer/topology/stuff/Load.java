@@ -1,6 +1,8 @@
 package com.ilife.analyzer.topology.stuff;
 
 import java.sql.Types;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 
 import org.apache.storm.arangodb.bolt.ArangoInsertBolt;
@@ -58,10 +60,12 @@ public class Load extends AbstractTopology {
 
 	    @Override
 	    public StormTopology getTopology() {
+	    		//0准备更新时间
+	    		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
 	    		//1，ArangoSpout：从arangodb读取状态为pending的初始数据，读取后即更新状态为ready
 	    		String query = "FOR doc in my_stuff "
 	    				+ "filter doc.status.load == 'pending' and doc.status.classify == 'ready' "
-	    				+ "update doc with { status:{load: 'ready'},category:CONCAT_SEPARATOR(' ',doc.category) } in my_stuff "
+	    				+ "update doc with { status:{load: 'ready'},timestamp:{load:'"+sdf.format(new Date())+"'},category:CONCAT_SEPARATOR(' ',doc.category) } in my_stuff "
 	    				+ "limit 10 "
 	    				+ "return NEW";
 	    		String[] fields = {"_key","_doc","category","categoryId","source","meta.category"};
