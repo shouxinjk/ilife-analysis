@@ -30,8 +30,8 @@ public class PropertyIdSpout extends BaseRichSpout implements IRichSpout {
     protected ConnectionProvider connectionProvider;
     public List<Column> queryParams;
 	//处理尚未映射propertyId的记录。注意：已经有继承属性映射的记录也要更新处理，认为当前目录下的映射属性优先级最高
-    String sql = "select platform,categoryId,property as propName from property where (propertyId is null or (propertyId is not null and isInherit=1)) and categoryId is not null order by revision_property limit 10";
-    
+    String sql = "select distinct platform,categoryId,property as propName from property where (propertyId is null or (propertyId is not null and isInherit=1)) and categoryId is not null order by revision_property limit 10";
+
     
     private static final Logger logger = Logger.getLogger(PropertyIdSpout.class);
     
@@ -47,7 +47,7 @@ public class PropertyIdSpout extends BaseRichSpout implements IRichSpout {
         this.queryParams = new ArrayList<Column>();
     	//直接查询所有propertyId为空的记录
         if(checkInheritProperty)
-        	this.sql = "select platform,categoryId,property as propName from property where propertyId is null and categoryId is not null order by revision_property limit 10";
+        	this.sql = "select distinct platform,categoryId,property as propName from property where propertyId is null and categoryId is not null order by revision_property limit 10";
     }
 
     public boolean isDistributed() {

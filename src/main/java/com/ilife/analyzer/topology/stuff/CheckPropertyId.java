@@ -55,7 +55,7 @@ public class CheckPropertyId extends AbstractTopology {
     		PropertyIdSpout propertySpout = new PropertyIdSpout(analyzeConnectionProvider);
     		
     		//2，直接从platform_properties内读取映射记录，根据platform、property名称（props.xxx的xxx部分）匹配，得到property的mappingId
-            String aql = "FOR doc in platform_properties filter doc.source==@platform and doc.name==@propName limit 1 return  {mappingId:doc.mappingId,mappingName:doc.mappingName,platform:doc.source,name:doc.name}";
+            String aql = "FOR doc in platform_properties filter doc.source==@platform and doc.name==@propName  and doc.mappingId!=null limit 1 return  {mappingId:doc.mappingId,mappingName:doc.mappingName,platform:doc.source,name:doc.name}";
             SimpleQueryFilterCreator queryCreator = new SimpleQueryFilterCreator().withField("platform","propName");
             String[] mapping_fields = {"mappingId","mappingName","platform","name"};//映射的标准属性Id、映射的标准属性名称、来源平台、原始属性名称
             ArangoLookupMapper mapper = new SimpleArangoLookupMapper(mapping_fields);
