@@ -38,6 +38,7 @@ import java.util.Properties;
  * 1，根据propertyId查询标注类型（同时返回字典表信息）
  * 2.1，如果标注类型是manual，则写入ope_performance
  * 2.2，如果标注类型是dict，则写入对应的字典表
+ * 3，判断是否有标签引用，如果是则写入标签引用表。【注意：所有属性均支持添加tagcategory，但早期仅对tagging、tags配置标签类目】
  * 
  * 
  */
@@ -79,7 +80,7 @@ public class InsertPropValueBolt extends BaseRichBolt {
 
     public void execute(Tuple tuple) {
     	//根据propertyId从业务库查询属性定义
-    	String sqlQuery = "SELECT id,auto_label_type as type, auto_label_dict as dict FROM mod_measure where id='"+tuple.getStringByField("propertyId")+"' limit 1";
+    	String sqlQuery = "SELECT id,auto_label_type as type, auto_label_dict as dict, auto_label_tag_category as tagCategory FROM mod_measure where id='"+tuple.getStringByField("propertyId")+"' limit 1";
         logger.debug("try to query measure.[SQL]"+sqlQuery);
         queryParams.clear();
         List<List<Column>> result = jdbcClientBiz.select(sqlQuery,queryParams);
@@ -87,6 +88,7 @@ public class InsertPropValueBolt extends BaseRichBolt {
         	List<Column> row  = result.get(0);//仅有一条记录
         	String type = ""+row.get(1).getVal();
         	String dict = ""+row.get(2).getVal();
+        	String tagCategory = ""+row.get(3).getVal();//对应自动标注标签目录
         	if("dict".equalsIgnoreCase(type)&&dict.trim().length()>0) {//需要写入字典表
                 String sqlInsert = "insert ignore into "+dict+" (id,category,label,create_date,update_date) values(?,?,?,now(),now())";
                 String id = Util.md5(tuple.getStringByField("categoryId")+tuple.getStringByField("value"));//同一个分类下值仅能出现一次
@@ -95,7 +97,7 @@ public class InsertPropValueBolt extends BaseRichBolt {
                 queryParams.add(new Column("categoryId", tuple.getStringByField("categoryId"), Types.VARCHAR));
 //                queryParams.add(new Column("propertyId", tuple.getStringByField("propertyId"), Types.VARCHAR));//不需要属性ID
                 queryParams.add(new Column("label", tuple.getStringByField("value"), Types.VARCHAR));
-                logger.info("try to insert manual labeling values into ope_performance.[SQL]"+sqlInsert+"[params]"+queryParams);
+                logger.debug("try to insert manual labeling values into ope_performance.[SQL]"+sqlInsert+"[params]"+queryParams);
                 List<List<Column>> items = Lists.newArrayList();
                 items.add(queryParams);
                 try {
@@ -110,20 +112,35 @@ public class InsertPropValueBolt extends BaseRichBolt {
                 queryParams.add(new Column("categoryId", tuple.getStringByField("categoryId"), Types.VARCHAR));
                 queryParams.add(new Column("propertyId", tuple.getStringByField("propertyId"), Types.VARCHAR));
                 queryParams.add(new Column("label", tuple.getStringByField("value"), Types.VARCHAR));
-                logger.info("try to insert manual labeling values into ope_performance.[SQL]"+sqlInsert+"[params]"+queryParams);
+                logger.debug("try to insert manual labeling values into ope_performance.[SQL]"+sqlInsert+"[params]"+queryParams);
                 List<List<Column>> items = Lists.newArrayList();
                 items.add(queryParams);
         	    jdbcClientBiz.executeInsertQuery(sqlInsert, items);
         	}else {
         		//do nothing
         	}
+        	
+        	//写入自动标签库mod_tag，等待标注
+        	if(row.get(3).getVal() !=null && tagCategory.trim().length()>0) {
+	            String sqlInsert = "insert ignore into mod_tag (id,tag_category,name,measure_id,type,create_date,update_date) values(?,?,?,?,'auto',now(),now())";
+	            String id = Util.md5(tagCategory+tuple.getStringByField("value"));//同一个标签分类下标签值仅能出现一次
+	            queryParams.clear();
+	            queryParams.add(new Column("id", id, Types.VARCHAR));
+	            queryParams.add(new Column("tag_category", tagCategory, Types.VARCHAR));
+	            queryParams.add(new Column("name", tuple.getStringByField("value"), Types.VARCHAR));
+	            queryParams.add(new Column("measure_id", tuple.getStringByField("propertyId"), Types.VARCHAR));
+	            logger.debug("try to insert manual labeling tags into mod_tag.[SQL]"+sqlInsert+"[params]"+queryParams);
+	            List<List<Column>> items = Lists.newArrayList();
+	            items.add(queryParams);
+	    	    jdbcClientBiz.executeInsertQuery(sqlInsert, items);
+	        }
         	//处理完成后更新value记录状态为ready
             String sqlUpdate = "update `value` set status='ready',modifiedOn=now() where categoryId=? and propertyId=? and `value`=?";
         	queryParams.clear();
             queryParams.add(new Column("categoryId", tuple.getStringByField("categoryId"), Types.VARCHAR));
             queryParams.add(new Column("propertyId", tuple.getStringByField("propertyId"), Types.VARCHAR));
             queryParams.add(new Column("value", tuple.getStringByField("value"), Types.VARCHAR));
-            logger.info("try to update pending value record statuns.[SQL]"+sqlUpdate+"[params]"+queryParams);
+            logger.debug("try to update pending value record statuns.[SQL]"+sqlUpdate+"[params]"+queryParams);
             List<List<Column>> items = Lists.newArrayList();
             items.add(queryParams);
     	    jdbcClientAnalyze.executeInsertQuery(sqlUpdate, items);
