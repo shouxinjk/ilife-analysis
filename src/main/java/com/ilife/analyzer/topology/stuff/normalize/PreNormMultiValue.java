@@ -87,7 +87,7 @@ public class PreNormMultiValue extends AbstractTopology {
             		new Column("propertyId", Types.VARCHAR));
             JdbcMapper defaultScoreUpdateMapper = new SimpleJdbcMapper(scoreSchemaColumns);
             JdbcInsertBolt jdbcDefaultScoreUpdateBolt = new JdbcInsertBolt(businessConnectionProvider, defaultScoreUpdateMapper)
-                    .withInsertQuery("update ope_performance set marked_value=?,update_date=now() where measure_id=? and marked_value is null");
+                    .withInsertQuery("update ope_performance set isReady=1,marked_value=?,update_date=now() where measure_id=? and marked_value is null");
             JdbcInsertBolt jdbcDefaultScoreUpdateBoltValue = new JdbcInsertBolt(analyzeConnectionProvider, defaultScoreUpdateMapper)
                     .withInsertQuery("update `value` set marked_value=?,modifiedOn=now() where propertyId=? and marked_value is null");
             JdbcInsertBolt jdbcDefaultScoreUpdateBoltProp = new JdbcInsertBolt(analyzeConnectionProvider, defaultScoreUpdateMapper)
@@ -146,7 +146,7 @@ public class PreNormMultiValue extends AbstractTopology {
             //4.2，将多值marked_value更新到分析库property
             JdbcMapper propertyScoreUpdateMapper = new SimpleJdbcMapper(performanceColumns);
             JdbcInsertBolt jdbcPropertyScoreUpdateBolt = new JdbcInsertBolt(analyzeConnectionProvider, propertyScoreUpdateMapper)
-                    .withInsertQuery("update `value` set modifiedOn=now(),marked_value= "
+                    .withInsertQuery("update `property` set modifiedOn=now(),marked_value= "
                     		+ "CASE "
                     		+ "when ?=1 then ? "
                     		+ "when ?=1 then ? "

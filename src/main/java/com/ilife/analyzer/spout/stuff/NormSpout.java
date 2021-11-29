@@ -69,8 +69,8 @@ public class NormSpout extends BaseRichSpout implements IRichSpout {
         String sql = "select distinct p.category_id as categoryId,p.measure_id as propertyId "
         		+ "from ope_performance p "
         		+ "left join mod_measure m on m.id = p.measure_id "
-        		+ "where m.normalize_type='"+ normalize_type +"' "
-        		+ "order by p.update_date "
+        		+ "where to_days(now())-to_days(p.update_date)<=1 and m.normalize_type='"+ normalize_type +"' "//注意：仅查询最近两天修改的数据，变成批处理，避免算力浪费
+        		+ "order by p.update_date desc "//最近修改的优先处理
         		+ "limit 10";
         logger.debug("try to query candidate properties.[SQL]"+sql+"[query]"+queryParams);
         List<List<Column>> result = jdbcClient.select(sql,queryParams);

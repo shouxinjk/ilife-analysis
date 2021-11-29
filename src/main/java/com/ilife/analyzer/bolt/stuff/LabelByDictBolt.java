@@ -106,25 +106,43 @@ public class LabelByDictBolt extends AbstractArangoBolt {
      * 动态组织字典表查询
      */
     private double findScoreByLabel(Tuple tuple) {
-    	String sqlQuery = "select ifnull(score,?) as score from _dict_table where label=?";
+    	//优先根据类目查询：由于商品类目为编码，与字典管理类目不冲突。
+    	String sqlQuery = "select ifnull(score,?) as score from _dict_table where label=? and category=? limit 1";
     	sqlQuery = sqlQuery.replace("_dict_table", tuple.getStringByField("dict"));
 	    logger.debug("try to query by dict.[SQL]"+sqlQuery);
 	    List<Column> queryParams=new ArrayList<Column>();
 	    queryParams.add(new Column("score",tuple.getValueByField("score"),Types.DOUBLE));//默认值
 	    queryParams.add(new Column("label",tuple.getValueByField("value"),Types.VARCHAR));//标签
+	    queryParams.add(new Column("category",tuple.getValueByField("categoryId"),Types.VARCHAR));//类目
 	    List<List<Column>> result = jdbcClientBiz.select(sqlQuery,queryParams);
+	    
+	    //如果没有则查询无类目记录
+	    if(result == null || result.size()==0) {
+	    	sqlQuery = "select ifnull(score,?) as score from _dict_table where label=? limit 1";
+	    	sqlQuery = sqlQuery.replace("_dict_table", tuple.getStringByField("dict"));
+		    logger.debug("try to query by dict.[SQL]"+sqlQuery);
+		    queryParams.clear();
+		    queryParams.add(new Column("score",tuple.getValueByField("score"),Types.DOUBLE));//默认值
+		    queryParams.add(new Column("label",tuple.getValueByField("value"),Types.VARCHAR));//标签
+		    result = jdbcClientBiz.select(sqlQuery,queryParams);
+	    }
+	    
+	    //根据结果进行处理
 	    if (result != null && result.size() > 0) {
-            for (List<Column> row : result) {
-        		for(Column column:row) {//仅返回一个score字段，此处确认
-        			if("score".equalsIgnoreCase(column.getColumnName())) {
-        				return Double.parseDouble(column.getVal().toString());
-        			}
-        		}
-        }	        
+            List<Column> row =result.get(0);//仅处理一条结果
+    		for(Column column:row) {//仅返回一个score字段，此处确认
+    			if("score".equalsIgnoreCase(column.getColumnName())) {
+    				try {
+    					return Double.parseDouble(column.getVal().toString());
+    				}catch(Exception ex) {
+    					logger.error("cannot parse dict score to double.[score]"+column.getVal(),ex);
+    				}
+    			}
+    		}       
 	    }else {//如果没有对应的值：do nothing
     		logger.debug("Cannot find label from dict");
 	    }
-	    return -1;
+	    return 0;
     }
 
     @Override

@@ -75,7 +75,7 @@ public class PreNormAutoSpout extends BaseRichSpout implements IRichSpout {
         		+ "p.original_value as `value`,m.default_score as score "
         		+ "FROM ope_performance p "
         		+ "left join mod_measure m on p.measure_id=m.id "
-        		+ "where m.auto_label_type='auto' "
+        		+ "where p.isReady=0 and m.auto_label_type='auto' "
         		+ "order by p.marked_value,p.update_date limit 100";
         logger.debug("try to query candidate properties.[SQL]"+sql+"[query]"+queryParams);
         List<List<Column>> result = jdbcClient.select(sql,queryParams);

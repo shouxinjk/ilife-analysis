@@ -85,7 +85,7 @@ public class PreNormDict extends AbstractTopology {
             		new Column("value", Types.VARCHAR));
             JdbcMapper dictScoreUpdateMapper = new SimpleJdbcMapper(performanceColumns);
             JdbcInsertBolt jdbcDictScoreUpdateBolt = new JdbcInsertBolt(businessConnectionProvider, dictScoreUpdateMapper)
-                    .withInsertQuery("update ope_performance set marked_value=?,update_date=now() where category_id=? and measure_id=? and original_value=?");
+                    .withInsertQuery("update ope_performance set isReady=1,marked_value=?,update_date=now() where category_id=? and measure_id=? and original_value=?");
 
             //3.2，将score更新到分析库value
             JdbcMapper valueScoreUpdateMapper = new SimpleJdbcMapper(performanceColumns);

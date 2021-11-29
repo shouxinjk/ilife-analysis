@@ -83,7 +83,7 @@ public class PreNormRefer extends AbstractTopology {
             //3.1，将score更新到ope_performance记录
             JdbcMapper dictScoreUpdateMapper = new SimpleJdbcMapper(scoreSchemaColumns);
             JdbcInsertBolt jdbcDictScoreUpdateBolt = new JdbcInsertBolt(businessConnectionProvider, dictScoreUpdateMapper)
-                    .withInsertQuery("update ope_performance set marked_value=?,update_date=now() where id=?");
+                    .withInsertQuery("update ope_performance set isReady=1,marked_value=?,update_date=now() where id=?");
             
             //3.2，将score更新到分析库value
             List<Column> performanceColumns = Lists.newArrayList(

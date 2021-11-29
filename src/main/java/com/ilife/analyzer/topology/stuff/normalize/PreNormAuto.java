@@ -79,7 +79,7 @@ public class PreNormAuto extends AbstractTopology {
             		);
             JdbcMapper autoScoreUpdateMapper = new SimpleJdbcMapper(performanceColumns);
             JdbcInsertBolt jdbcAutoScoreUpdateBolt = new JdbcInsertBolt(businessConnectionProvider, autoScoreUpdateMapper)
-                    .withInsertQuery("update ope_performance set marked_value=convert(original_value,decimal(10,2)),update_date=now() where (original_value REGEXP '[^0-9.]')=0 and measure_id=?");
+                    .withInsertQuery("update ope_performance set isReady=1,marked_value=convert(original_value,decimal(10,2)),update_date=now() where (original_value REGEXP '[^0-9.]')=0 and measure_id=?");
             
             //2.3，将score更新到分析库value
             JdbcMapper valueScoreUpdateMapper = new SimpleJdbcMapper(performanceColumns);
