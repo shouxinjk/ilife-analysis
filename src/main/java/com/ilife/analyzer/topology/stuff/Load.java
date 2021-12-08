@@ -68,7 +68,7 @@ public class Load extends AbstractTopology {
 	    				+ "update doc with { status:{load: 'ready'},timestamp:{load:'"+sdf.format(new Date())+"'},category:CONCAT_SEPARATOR(' ',doc.category) } in my_stuff "
 	    				+ "limit 10 "
 	    				+ "return NEW";
-	    		String[] fields = {"_key","_doc","category"/*,"categoryId"*/,"source","meta.category"};
+	    		String[] fields = {"_key","_doc","category","categoryId","source","meta.category"};
 	    		ArangoSpout arangoSpout = new ArangoSpout(props,arango_harvest)
 	    				.withQuery(query)
 	    				.withFields(fields);
@@ -81,8 +81,8 @@ public class Load extends AbstractTopology {
 	    		//**/
 	    		//2.2，按照属性打散数据记录写入key-value数据库
 	    		//2.2.1，将json打散为行列数据
-	    		String[] infields = {"_doc","category"/*,"categoryId"*/,"_key","source","meta.category"};
-	    		String[] outfields = {"property","value","category"/*,"categoryId"*/,"itemKey","source","meta.category"};
+	    		String[] infields = {"_doc","category","categoryId","_key","source","meta.category"};//categoryId为原始类目编码
+	    		String[] outfields = {"property","value","category","categoryId","itemKey","source","meta.category"};
 	    		JsonParseBolt jsonParser = new JsonParseBolt(infields,outfields);//从 _doc字段读取json字符串，输出key、value字段; 并且附加其他字段如category,itemKey
 	    		
 	    		//2.2.2，行列数据写入关系数据库:category,property(key),value,status,modifiedOn。用于归一化任务。

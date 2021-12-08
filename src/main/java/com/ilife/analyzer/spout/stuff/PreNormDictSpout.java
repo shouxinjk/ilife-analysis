@@ -69,6 +69,12 @@ public class PreNormDictSpout extends BaseRichSpout implements IRichSpout {
 //	    	connectionProvider.cleanup();
     }
 
+    /**
+SELECT p.category_id as categoryId,p.measure_id as propertyId,p.original_value as `value`,m.auto_label_dict as dict,m.default_score as score 
+FROM ope_performance p left join mod_measure m on p.measure_id=m.id 
+where p.isReady=0 and m.auto_label_type='dict' and m.auto_label_dict is not null 
+order by p.marked_value,p.update_date limit 100
+     */
     public void nextTuple() {
     	//其中score为属性定义上的默认值。必须填值，否则可能导致由于字典中存在缺失项无法全局更新
         String sql = "SELECT p.category_id as categoryId,p.measure_id as propertyId,"
